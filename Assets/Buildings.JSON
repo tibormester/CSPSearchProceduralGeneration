@@ -1,0 +1,58 @@
+[
+    {
+        "name": "Townhall",
+        "tags": ["government", "administrative"],
+        "size": 1,
+        "capacity": 5,
+        "prefab": "house_1"
+    },
+    {
+        "name": "Tavern",
+        "tags": ["entertainment", "food", "drink"],
+        "size": 1,
+        "capacity": 3,
+        "prefab": "house_2"
+    },
+    {
+        "name": "Inn",
+        "tags": ["lodging", "hospitality"],
+        "size": 1,
+        "capacity": 4,
+        "prefab": "house_3"
+    },
+    {
+        "name": "Shop",
+        "tags": ["commerce", "trade"],
+        "size": 1,
+        "capacity": 2,
+        "prefab": "house_4"
+    },
+    {
+        "name": "Black Smith",
+        "tags": ["craftsman", "metalworking"],
+        "size": 1,
+        "capacity": 2,
+        "prefab": "house_5"
+    },
+    {
+        "name": "Tanner",
+        "tags": ["craftsman", "leatherworking"],
+        "size": 1,
+        "capacity": 2,
+        "prefab": "house_6"
+    },
+    {
+        "name": "Barracks",
+        "tags": ["military", "training"],
+        "size": 1,
+        "capacity": 10,
+        "prefab": "house_7"
+    },
+    {
+        "name": "Guard House",
+        "tags": ["security", "watchtower"],
+        "size": 1,
+        "capacity": 3,
+        "prefab": "house_8"
+    }
+]
