@@ -1,108 +1,120 @@
-using System.Collections;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using UnityEngine;
 
-
-/**
-Building Generation
-One csp with flexible constraints or something else for generating a list of buildings to place
-Use city simulation properties like population (military, civilian, unemployed, elderly, youth), economy (exports-gathering, imports-manufacturing, oppulence), security (strength, defense, standing)
-Then have a csp where the variables is simply a list of buildings the size of the city (note that maybe some buildings occupy more or less than a single variable), 
-    selecting a state that satisfies rigid constraints like population while being weighted towards the flavours of population like military, civilian, elderly, youth etc...
-
-Building Placement
-Once we have a list of buildings to place, those become the new domains and we will let the variables become the location in the cities 3d space.
-    Generating a proper layout will involve assigning random layouts and iterating through all buildings ensuring there is no overlapping
-    Another constraint will be the connectivity of roads or something like that?
-    Another constraint might be the zoning of the city so that military buildings are grouped etc... zoning might involve walls which will be like the dual to roads
-    A lot of constraints could simply be weighted to pseudo enforce zoning instead, similar style buildings will attempt to be adjacent? (randomly generate n locations and try them in order of proximity to similar flavour building)
-
-People Generation
-Once we have a list of distinct buldings with associated locations, we can use the buildings as variables and assign them people as their domain and then assign the people a location around the building
-    More specifically everyone needs a home, so use the housing as variables and assign them #people according to capacity. These people simply need names and appearances everything else can be partial assignments. 
-    and then a building that isn't housing needs employees, these employees can be either taken from the closest partially assigned person, or generated and added to the neatest empty housing
-    In this way people can be generated as needed (if part of the city is never visited, nothing is determined of the people there)
-    We can use a marker for people if they need to be stored as a permanent feature of the buildings (if a player interacts with a person they become part of the building otherwise they are recyclable background)
-
-People Placement
-Although we could simply place people around there building or something simplistic like that, it makes sense to give them a task and place them somewhere along the execution of the task 
-    this way when the rendered simulation takes over, it can continue guiding the people through their task.
-    The domain of task will be sum of tasks from the housing (chores like cleaning, sleeping, chopping firewood etc...) and from their job (military barracks might have a patrolling job etc...)
-    It is importatnt that all the tasks at least start at the building because the buildings will be populating at the edge of render distance
-    so if the people are generated and get a task we want to ensure they can start their simulation at the edge of render distance too.
-    This means that without buildings in proximity there wont be any people. So maybe there could be a 'wandering task' and a base number of population assigned to it and set to wander somewhere within render distance
-
-Loading saving simulation and visualization
-    integrate with JSON, Unity, and build a UI to have people placement keep refreshing, maybe have it as a function weighted by time too
-    Have a way to simulate changes to the city by having dynamic constraint changes (new weights most likely) working on both building generation and placement
-    Have a way to mark People and Buildings as unique to make permanent their residency or location respectively.
-
-**/
-
-/**
-For large n, m this is taking an absurd amount of time, I think it has to do with allocating space for the arrays and since theyre holding classes not structs thats also an issue....
-I think I could fix this by shrinking the objects to structs, using arrays instead of lists, and using a delta from the default instead....
-**/
-
 public class CSP<TVariable, TDomain>
 {
-    private readonly List<TVariable> variables;
+    //A list of our variables that we need to assign values from the domain to
+    private readonly TVariable[] variables;
+    /**
     private readonly Dictionary<TVariable, List<TDomain>> domains;
-    private readonly Dictionary<TVariable, List<Constraint<TVariable, TDomain>>> constraints;
+    this stores an individual domain per variable, but if the domains are all initially the same this is quite wasteful
+    Instead we will use a single domain that is the union of all domains as well as an initial partial solution
+    the partial solution will handle restricting domains of variables if necessary
+    **/
+    private readonly TDomain[] domains;
+    /**
+        saves the variable index associated with the set of domain indexes that are valid for the variable
+        Note: if the variable index doesnt appear then the variable's domain is the entire domain
+    **/
+    private readonly Dictionary<int,List<int>> initialState;
+    /**
+        Each variables associated constriants, I might need to create a universal set similar to what i did to domains
+        However a lot of these constraints although might be similar across variables might be unique per variable
+        In otherwords it is likely to create these constraints depends on the specific variable
+        as a result the universal set of constraints would be the same size as this dictionary, but just as an array
+    **/
+
+    private readonly Dictionary<int, List<Constraint<TVariable, TDomain>>> constraints;
+    //After we finish solving the solution will be stored here in case other operations need to work on it
     private Dictionary<TVariable, TDomain> solution;
 
-    public CSP(List<TVariable> variables, Dictionary<TVariable, List<TDomain>> domains, Dictionary<TVariable, List<Constraint<TVariable, TDomain>>> constraints)
+    public CSP(TVariable[] variables, TDomain[] domains, Dictionary<int, List<Constraint<TVariable, TDomain>>> constraints, Dictionary<int,List<int>> initialState)
     {
         this.variables = variables;
         this.domains = domains;
         this.constraints = constraints;
+        this.initialState = initialState;
     }
 
     public Dictionary<TVariable, TDomain> Solve()
     {
         //solution = new Dictionary<TVariable, TDomain>();
-        var assignment = new Dictionary<TVariable, TDomain>();
+        /**
+            changed TAssignment to List<int>
+            the list is intended to handle partial assignments by adding assignments/removing aspects of the domain
+            the int is to help shrink the size of the object we are working with, creating a List of all domains is a polynomial growth
+            This could likely be more efficient but hopefully is sufficient for this use case
+            I could also make the variables ints and have them be looked up but I dont think that saves space since the variable data wont be duplicated exponentially
+        **/
+        Dictionary<int,List<int>> assignment = new(initialState);
         Backtrack(assignment);
         return solution;
     }
-
-    private void Backtrack(Dictionary<TVariable, TDomain> assignment)
+    private bool IsFullyAssigned(Dictionary<int,List<int>> assignment){
+        if (assignment.Count() != variables.Count()) return false;
+        foreach ((int varIndex, List<int> assignments) in assignment){
+            if (assignments.Count() != 1) return false;
+        }
+        //If all variables have 1 and only 1 assignment then we are fully assigned
+        return true;
+    }
+    
+    //Converts from the dictionary based on indexes to the a dictionary based on the objects (so can be used externally)
+    private Dictionary<TVariable, TDomain> AssignmentToSolution(Dictionary<int,List<int>> assignment, bool first = true){
+        Dictionary<TVariable, TDomain> solution = new();
+        foreach ((int varIndex, List<int> assignments) in assignment){
+            if(assignments.Count == 1 || first) solution.Add(variables[varIndex], domains[assignments.First<int>()]);
+        }
+        //Create a dictionary where each variable indexes the first of its partial assignments or if first is false then only those with a single assignment
+        return solution;
+    }
+    private void Backtrack(Dictionary<int, List<int>> assignment)
     {
-        if (assignment.Count == variables.Count)
+        if (IsFullyAssigned(assignment))
         {
-            solution = new Dictionary<TVariable, TDomain>(assignment);
+            solution = AssignmentToSolution(assignment);
             return;
         }
-
-        var var = SelectUnassignedVariable(assignment);
-        foreach (var value in OrderDomainValues(var, assignment))
+        //Breaks if there are no unassigned variables since it returns -1, but then it shouldnt have gotten past isfullyassigned
+        int varIndex = SelectUnassignedVariable(assignment);
+        if (varIndex == -1){
+            solution = AssignmentToSolution(assignment);
+            Debug.LogWarning("Couldn't find an unassigned variable despite thinking there should be one, likely IsFullyAssigned doesnt match SelectUnassignedVariable");
+            return;
+        }
+        //Check each value in the partial domain, if it works shrink the domain to that and continue
+        //Alternatively could shrink the domain by removing values that dont work
+        int[] domainIndicies = (assignment.Keys.Contains(varIndex)) ? 
+            assignment[varIndex].ToArray() : Enumerable.Range(0, domains.Length).ToArray(); 
+        foreach (int domainIndex in domainIndicies)
         {
-            if (IsConsistent(var, value, assignment))
+            if (IsConsistent(varIndex, domainIndex, assignment))
             {
-                assignment[var] = value;
+                assignment[varIndex] = new List<int>{domainIndex};
                 Backtrack(assignment);
-                assignment.Remove(var);
+                assignment.Remove(varIndex);
             }
         }
     }
-
-    private TVariable SelectUnassignedVariable(Dictionary<TVariable, TDomain> assignment)
-    {
-        return variables.Except(assignment.Keys).First();
+    private int SelectUnassignedVariable(Dictionary<int,List<int>> assignment)
+    {   //Maybe in the future I will have this find the one with the smallest domain etc...
+        for (int i = 0; i < variables.Length; i++){
+            if (assignment.ContainsKey(i)){
+                if (assignment[i].Count != 1) return i;
+            } else{
+                return i;
+            }
+        }
+        Debug.LogError("Can't find an unassigned variable anymore");
+        return -1;
     }
 
-    private IEnumerable<TDomain> OrderDomainValues(TVariable var, Dictionary<TVariable, TDomain> assignment)
+    private bool IsConsistent(int varIndex, int domainIndex, Dictionary<int, List<int>> assignment)
     {
-        return domains[var];
-    }
-
-    private bool IsConsistent(TVariable var, TDomain value, Dictionary<TVariable, TDomain> assignment)
-    {
-        foreach (var constraint in constraints[var])
+        foreach (Constraint<TVariable, TDomain> constraint in constraints[varIndex])
         {
-            if (!constraint.IsSatisfied(var, value, assignment))
+            if (!constraint.IsSatisfied(variables[varIndex], domains[domainIndex], AssignmentToSolution(assignment, false)))
             {
                 return false;
             }

@@ -15,16 +15,19 @@ public class CityManager : MonoBehaviour
 
         // City size and population
         int citySize = 5;
-        int population = 5;
+        int population = 500;
 
         // Create variables representing slots in the city
-        List<int> variables = Enumerable.Range(0, citySize).ToList();
-
-        // Create domains where each slot can be assigned any building template
-        Dictionary<int, List<BuildingTemplate>> domains = new Dictionary<int, List<BuildingTemplate>>();
-        foreach (int slot in variables)
+        int[] variables = Enumerable.Range(0, citySize).ToArray();
+        //Create the default set of domain values from our list of building templates
+        BuildingTemplate[] domain = buildingTemplates.ToArray();
+        // Create an inital state mapping variable indicies to domain indicies
+        Dictionary<int, List<int>> initialState = new();
+        //For example we can loop through all the variables and create a subset of the global domain
+        //By default not having a key indicates that we should just use the global domain
+        for(int varIndex = 0; varIndex < variables.Length; varIndex++)
         {
-            domains[slot] = new List<BuildingTemplate>(buildingTemplates);
+            initialState[varIndex] = new List<int>(Enumerable.Range(0,domain.Length));
         }
 
         // Create constraints
@@ -33,12 +36,12 @@ public class CityManager : MonoBehaviour
         {
             constraints[slot] = new List<Constraint<int, BuildingTemplate>>
             {
-                new BuildingSlotConstraint(buildingTemplates.Where(b => b.tags.Contains("residential")).ToList(), population)
+                new BuildingSlotConstraint(population)
             };
         }
 
         // Create CSP instance
-        var csp = new CSP<int, BuildingTemplate>(variables, domains, constraints);
+        var csp = new CSP<int, BuildingTemplate>(variables, domain, constraints, initialState);
 
         // Solve the CSP
         var solution = csp.Solve();

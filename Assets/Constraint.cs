@@ -14,12 +14,10 @@ public abstract class Constraint<TVariable, TDomain>
 }
 public class BuildingSlotConstraint : Constraint<int, BuildingTemplate>
 {
-    private readonly List<BuildingTemplate> residentialTemplates;
     private readonly int population;
 
-    public BuildingSlotConstraint(List<BuildingTemplate> residentialTemplates, int population)
+    public BuildingSlotConstraint(int population)
     {
-        this.residentialTemplates = residentialTemplates;
         this.population = population;
     }
 
@@ -32,6 +30,6 @@ public class BuildingSlotConstraint : Constraint<int, BuildingTemplate>
             int sum = assignment.Values.ToArray().Where(b => b.tags.Contains("residential")).Sum(b => b.capacity) + buildingTemplate.capacity;
             return sum <= population;
         }
-        return true; // Constraint satisfied for non-residential buildings
+        return false; // Constraint satisfied for non-residential buildings
     }
 }

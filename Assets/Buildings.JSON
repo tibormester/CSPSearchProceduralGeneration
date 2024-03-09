@@ -54,5 +54,12 @@
         "size": 1,
         "capacity": 3,
         "prefab": "house_8"
+    },
+    {
+        "name": "House",
+        "tags": ["residential"],
+        "size": 1,
+        "capacity": 3,
+        "prefab": "house_9"
     }
 ]
