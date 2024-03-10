@@ -214,7 +214,7 @@ public class BuildingManager : MonoBehaviour
         List<BuildingTemplate> templates = GetBuildingTemplatesByTag(tag);
         //Generates the list of buildings to be placed, spaced slightly apart
         float position = 0;
-        float spacing = 1;
+        float spacing = 5;
         List<BuildingObject> buildings =  new();
         foreach (BuildingTemplate template in templates){
             position += spacing + template.size * 0.5f;
@@ -245,7 +245,7 @@ public class BuildingManager : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning($"No buildings in dictionary found with tag: {tag}, returning the whole dictionary instead");
+            //Debug.LogWarning($"No buildings in dictionary found with tag: {tag}, returning the whole dictionary instead"); I use this behavior intentionally a lot
             return buildingTemplates.Values.ToList();
         }
     }

@@ -26,20 +26,23 @@ public class CSP<TVariable, TDomain>
     **/
 
     private readonly Dictionary<int, List<Constraint<TVariable, TDomain>>> constraints;
+    private readonly Constraint<TVariable, TDomain>[] universalConstraints;
+
     //After we finish solving the solution will be stored here in case other operations need to work on it
     private Dictionary<TVariable, TDomain> solution;
 
-    public CSP(TVariable[] variables, TDomain[] domains, Dictionary<int, List<Constraint<TVariable, TDomain>>> constraints, Dictionary<int,List<int>> initialState)
+    public CSP(TVariable[] variables, TDomain[] domains, Constraint<TVariable, TDomain>[] universalConstraints, Dictionary<int, List<Constraint<TVariable, TDomain>>> constraints, Dictionary<int,List<int>> initialState)
     {
         this.variables = variables;
         this.domains = domains;
+        this.universalConstraints = universalConstraints;
         this.constraints = constraints;
         this.initialState = initialState;
     }
 
     public Dictionary<TVariable, TDomain> Solve()
     {
-        //solution = new Dictionary<TVariable, TDomain>();
+        solution = new Dictionary<TVariable, TDomain>();
         /**
             changed TAssignment to List<int>
             the list is intended to handle partial assignments by adding assignments/removing aspects of the domain
@@ -85,20 +88,28 @@ public class CSP<TVariable, TDomain>
         }
         //Check each value in the partial domain, if it works shrink the domain to that and continue
         //Alternatively could shrink the domain by removing values that dont work
-        int[] domainIndicies = (assignment.Keys.Contains(varIndex)) ? 
-            assignment[varIndex].ToArray() : Enumerable.Range(0, domains.Length).ToArray(); 
-        foreach (int domainIndex in domainIndicies)
+        int[] domainIndicies = (assignment.Keys.Contains(varIndex)) ? assignment[varIndex].ToArray() : Enumerable.Range(0, domains.Length).ToArray();
+        List<int> possibleDomains = new(domainIndicies);
+        //Assign each index a random number from 0 to #indexes^2 and order by that
+        var randomizedEnumeration = domainIndicies.OrderBy(n => Random.Range(0, Mathf.Min(domainIndicies.Length * domainIndicies.Length, int.MaxValue)));
+        foreach (int domainIndex in randomizedEnumeration)
         {
             if (IsConsistent(varIndex, domainIndex, assignment))
             {
+                //Since this value is consistent we temporarily assign it completely and then recursively backtrack.
                 assignment[varIndex] = new List<int>{domainIndex};
                 Backtrack(assignment);
-                assignment.Remove(varIndex);
+                //We arrive back here if although this assignment is valid, down the line there are issues, so we remove this domain from the list of potential and reset the partial assignment
+                possibleDomains.Remove(domainIndex);
+                assignment[varIndex] = possibleDomains;
             }
         }
+        //Debug.LogWarning("The CSP couldn't find a solution, try refining constraint or an alternative approach"); or maybe none in the domain were consistent so it started backtracking
     }
     private int SelectUnassignedVariable(Dictionary<int,List<int>> assignment)
     {   //Maybe in the future I will have this find the one with the smallest domain etc...
+        //Need to add a random selection
+
         for (int i = 0; i < variables.Length; i++){
             if (assignment.ContainsKey(i)){
                 if (assignment[i].Count != 1) return i;
@@ -106,17 +117,27 @@ public class CSP<TVariable, TDomain>
                 return i;
             }
         }
+        
         Debug.LogError("Can't find an unassigned variable anymore");
         return -1;
     }
 
     private bool IsConsistent(int varIndex, int domainIndex, Dictionary<int, List<int>> assignment)
-    {
-        foreach (Constraint<TVariable, TDomain> constraint in constraints[varIndex])
+    {   
+        foreach (Constraint<TVariable, TDomain> constraint in universalConstraints)
         {
             if (!constraint.IsSatisfied(variables[varIndex], domains[domainIndex], AssignmentToSolution(assignment, false)))
             {
                 return false;
+            }
+        }
+        if(constraints.Keys.Contains(varIndex)){ //If there is a set of unique constraints iterate through them checking each constraint
+            foreach (Constraint<TVariable, TDomain> constraint in constraints[varIndex])
+            {
+                if (!constraint.IsSatisfied(variables[varIndex], domains[domainIndex], AssignmentToSolution(assignment, false)))
+                {
+                    return false;
+                }
             }
         }
         return true;
