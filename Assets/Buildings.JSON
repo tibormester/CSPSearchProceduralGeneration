@@ -1,63 +1,189 @@
 [
     {
         "name": "Townhall",
-        "tags": ["government", "administrative"],
-        "size": 1,
+        "tags": [
+            "government",
+            "administrative"
+        ],
+        "size": 3,
         "capacity": 5,
         "prefab": "house_1"
     },
     {
         "name": "Tavern",
-        "tags": ["entertainment", "food", "drink"],
-        "size": 1,
-        "capacity": 3,
+        "tags": [
+            "entertainment",
+            "hospitality"
+        ],
+        "size": 2,
+        "capacity": 4,
         "prefab": "house_2"
     },
     {
         "name": "Inn",
-        "tags": ["lodging", "hospitality"],
-        "size": 1,
-        "capacity": 4,
+        "tags": [
+            "lodging",
+            "hospitality"
+        ],
+        "size": 3,
+        "capacity": 15,
         "prefab": "house_3"
     },
     {
-        "name": "Shop",
-        "tags": ["commerce", "trade"],
+        "name": "Market",
+        "tags": [
+            "commerce"
+        ],
         "size": 1,
         "capacity": 2,
         "prefab": "house_4"
     },
     {
-        "name": "Black Smith",
-        "tags": ["craftsman", "metalworking"],
+        "name": "Blacksmith",
+        "tags": [
+            "crafting",
+            "smithing"
+        ],
         "size": 1,
-        "capacity": 2,
+        "capacity": 4,
+        "prefab": "house_0"
+    },
+    {
+        "name": "Armorsmith",
+        "tags": [
+            "crafting",
+            "armor",
+            "smithing"
+        ],
+        "size": 1,
+        "capacity": 4,
+        "prefab": "house_1"
+    },
+    {
+        "name": "Enchanter",
+        "tags": [
+            "crafting",
+            "enchantment"
+        ],
+        "size": 1,
+        "capacity": 4,
+        "prefab": "house_2"
+    },
+    {
+        "name": "Alchemist",
+        "tags": [
+            "crafting",
+            "alchemy"
+        ],
+        "size": 1,
+        "capacity": 4,
+        "prefab": "house_3"
+    },
+    {
+        "name": "Carpenter",
+        "tags": [
+            "crafting",
+            "woodworking"
+        ],
+        "size": 1,
+        "capacity": 4,
+        "prefab": "house_4"
+    },
+    {
+        "name": "Tailor",
+        "tags": [
+            "crafting",
+            "tailoring"
+        ],
+        "size": 1,
+        "capacity": 4,
         "prefab": "house_5"
     },
     {
-        "name": "Tanner",
-        "tags": ["craftsman", "leatherworking"],
+        "name": "Jeweler",
+        "tags": [
+            "crafting",
+            "jewelry"
+        ],
         "size": 1,
-        "capacity": 2,
+        "capacity": 4,
         "prefab": "house_6"
     },
     {
-        "name": "Barracks",
-        "tags": ["military", "training"],
+        "name": "Potter",
+        "tags": [
+            "crafting",
+            "pottery"
+        ],
         "size": 1,
-        "capacity": 10,
+        "capacity": 4,
+        "prefab": "house_7"
+    },
+    {
+        "name": "Brewer",
+        "tags": [
+            "crafting",
+            "brewing"
+        ],
+        "size": 1,
+        "capacity": 4,
+        "prefab": "house_8"
+    },
+    {
+        "name": "Scribe",
+        "tags": [
+            "crafting",
+            "scribing"
+        ],
+        "size": 1,
+        "capacity": 4,
+        "prefab": "house_9"
+    },
+    {
+        "name": "Tanner",
+        "tags": [
+            "industrial",
+            "tanning"
+        ],
+        "size": 1,
+        "capacity": 4,
+        "prefab": "house_9"
+    },
+    {
+        "name": "Quarry",
+        "tags": [
+            "industrial",
+            "stone"
+        ],
+        "size": 3,
+        "capacity": 20,
+        "prefab": "house_1"
+    },
+    {
+        "name": "Barracks",
+        "tags": [
+            "military",
+            "training"
+        ],
+        "size": 2,
+        "capacity": 15,
         "prefab": "house_7"
     },
     {
         "name": "Guard House",
-        "tags": ["security", "watchtower"],
+        "tags": [
+            "military",
+            "guard"
+        ],
         "size": 1,
         "capacity": 3,
         "prefab": "house_8"
     },
     {
         "name": "House",
-        "tags": ["residential"],
+        "tags": [
+            "residential"
+        ],
         "size": 1,
         "capacity": 3,
         "prefab": "house_9"

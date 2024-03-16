@@ -106,6 +106,16 @@ public class CSP<TVariable, TDomain>
         }
         //Debug.LogWarning("The CSP couldn't find a solution, try refining constraint or an alternative approach"); or maybe none in the domain were consistent so it started backtracking
     }
+
+    /**
+        Filtering prunes the domains of unassigned variables in advance
+
+        Forward Checking: When an assignment is made, prune the domains of connnected variables of values that are inconsistent
+
+        Arc Consistency: is a generalization of forward checking that uses a Q of one directional constraints called arcs.
+            iterate through each arc and remove all tail values without valid head values and all head values without valid tails
+    **/
+
     private int SelectUnassignedVariable(Dictionary<int,List<int>> assignment)
     {   //Maybe in the future I will have this find the one with the smallest domain etc...
         //Need to add a random selection
