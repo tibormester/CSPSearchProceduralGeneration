@@ -133,7 +133,6 @@ GameObject:
   m_Component:
   - component: {fileID: 68033554}
   - component: {fileID: 68033555}
-  - component: {fileID: 68033556}
   m_Layer: 0
   m_Name: Cube
   m_TagString: Untagged
@@ -165,26 +164,9 @@ MonoBehaviour:
   m_GameObject: {fileID: 68033549}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6ec806f0530e243afb66ba32857a06ec, type: 3}
+  m_Script: {fileID: 11500000, guid: def6f576722a14ca09dc13d1b338d9ca, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  buildingManager: {fileID: 0}
-  newSolution: 0
---- !u!114 &68033556
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 68033549}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6591d33f4604a48f4953fee956856394, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  buildingsJSONPath: Assets/Buildings.json
-  displayDictionary: 0
-  dictionaryDisplayTag: 
 --- !u!1 &705507993
 GameObject:
   m_ObjectHideFlags: 0

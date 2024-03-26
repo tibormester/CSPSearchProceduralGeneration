@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using TMPro;
 using UnityEngine;
 
 public class CSP<TVariable, TDomain>
@@ -115,6 +116,30 @@ public class CSP<TVariable, TDomain>
         Arc Consistency: is a generalization of forward checking that uses a Q of one directional constraints called arcs.
             iterate through each arc and remove all tail values without valid head values and all head values without valid tails
     **/
+
+    /**
+        give it the assignment and connected variables and prune inconsistencies from the domains
+    **/
+    private Dictionary<int,List<int>>  ForwardCheck(int headIndex, int domainValueIndex, Dictionary<int,List<int>> assignment){
+        TVariable head = variables[headIndex];
+        foreach(TVariable tail in variables){
+            if(tail.Equals(head)) continue; //Want to check all global constraints against eachother
+            foreach(Constraint<TVariable, TDomain> constraint in universalConstraints){
+                if(true);//IsConsistent())
+            }
+        }
+        foreach(Constraint<TVariable,TDomain> constraint in constraints[headIndex]){
+            //Need to rework constraints so they are explicitly linking a set of variables in a relation
+        }
+        return assignment;
+    }
+
+    private bool IsArcConsistent(TVariable head, TVariable tail){
+        foreach (Constraint<TVariable, TDomain> constraint in universalConstraints){
+
+        }
+        return true;
+    }
 
     private int SelectUnassignedVariable(Dictionary<int,List<int>> assignment)
     {   //Maybe in the future I will have this find the one with the smallest domain etc...

@@ -1,3 +1,4 @@
+
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -69,3 +70,4 @@ public class BuildingSlotHousingOnlyFirstConstraint : Constraint<int, BuildingTe
         else return false;
     }
 }
+
