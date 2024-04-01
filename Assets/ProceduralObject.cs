@@ -6,20 +6,75 @@ using Unity.VisualScripting;
 using UnityEngine;
 
 public class ProceduralObject{
-    //List of all variables should this be an array?
     public Variable[] variables;
-
-    public Constraint[] constraints; //List of all constraints
-    
-    //On initi sets the constraint's obj reference to itself
-
-
+    public Constraint[] constraints; 
+    public CSPGraph[] layers;
+    //Variable.name as a the string and a value from variable.domain as the object
+    public Dictionary<string,object> solution; // to store all solved values in case solve is called on different layers at different times...?
+    public ProceduralObject(Variable[] vars, Constraint[] cons, CSPGraph[] layers){
+        variables = vars;
+        constraints = cons;
+        this.layers = layers;
+        solution = new();
+        foreach(var c in constraints){c.obj = this;}
+    }
+    /**
+        if the list of layers is omitted default to creating a layer with all the vars and constraints
+    **/
     public ProceduralObject(Variable[] vars, Constraint[] cons){
         variables = vars;
         constraints = cons;
+        layers = new CSPGraph[1]{new CSPGraph(vars, cons)};
         foreach(var c in constraints){c.obj = this;}
-        
-        Debug.Log("Created object:\n" + JsonConvert.SerializeObject(CastSolution(true)));
+    }
+    public ProceduralObject(){}
+
+    public Dictionary<string, object> Solve(int[] layersIndex, int errorThreshold = 1){
+        Dictionary<string, object> values = new();
+        foreach(int layerIndex in layersIndex){
+            CSPGraph layer = this.layers[layerIndex];
+            //shrinks the partial domains
+            layer.ArcConsistencySolve(errorThreshold);
+            //Solves the shrunk problem
+            var vals = layer.BacktrackingSolve();
+            values.AddRange(vals);
+            solution.AddRange(vals);
+        }
+        return values;
+    }
+    public Dictionary<string, object> Solve(int layerIndex, int errorThreshold = 1){
+        Dictionary<string, object> values = new();
+            CSPGraph layer = this.layers[layerIndex];
+            //shrinks the partial domains
+            layer.ArcConsistencySolve(errorThreshold);
+            //Solves the shrunk problem
+            var vals = layer.BacktrackingSolve();
+            values.AddRange(vals);
+            solution.AddRange(vals);
+        return values;
+    }
+    public Dictionary<string, object> Solve(int errorThreshold = 1){
+        Dictionary<string, object> values = new();
+        foreach(CSPGraph layer in layers){
+            //shrinks the partial domains
+            layer.ArcConsistencySolve(errorThreshold);
+            //Solves the shrunk problem
+            var vals = layer.BacktrackingSolve();
+            values.AddRange(vals);
+            solution.AddRange(vals);
+
+        }
+        return values;
+    }
+}
+
+public class CSPGraph{
+    public Variable[] variables;
+    public Constraint[] constraints;
+    public CSPGraph(Variable[] vars, Constraint[] cons){
+        variables = vars;
+        constraints = cons;
+        Debug.Log("Created layer:\n" + JsonConvert.SerializeObject(CastSolution(true)));
     }
 
     public void ResetPartialSolutions(){foreach(Variable variable in variables)variable.partialSolution = null;}

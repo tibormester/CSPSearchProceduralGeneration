@@ -32,7 +32,7 @@ We hope that our implementation of these techniques will provide analysis into t
 
 **Key Features:**
 
-- Complexity: The CSP model is advantageous since the underlying algorithms are independent of the set of end constraints that define an object. Instead of encoding an algorithm that results in an object, we define constraints that our object satisfies, decreasing code complexity during development. 
+- Complexity: The CSP model is advantageous since the underlying algorithms are independent of the set of end constraints that define an object. Instead of encoding an algorithm that results in an object, we define constraints that our object satisfies, decreasing code complexity during development. Additionally, this enables the encoding of more complex behaviours or emergent properties more easily. Specifically, this approach benefits the mapping of qualitative values to quantative properties. Describing the values a set of constraints on the properties, enables the system to generate objects with an intended 'feeling,' without a developer worrying about how to design a system to mix and match the qualitative properties.
 
 - Variety: Another advantage is that not only can the developer manually craft content by creating the set of constraints the bound it, but can automate this process with genetic algorithms combining similar objects or utilizing gradients between sets of constraints. Especially for exploration themed games, this would be a valuable way to add an imense amount of themetically appropriate variety while limiting code and asset complexity. We plan to use this in our forest by defining model creatures for each 'pack' of creatures instanced and adding a gradient across some properties within the pack, resulting in minor variation in packs of creatures but avoiding chaotic randomness.
 
@@ -58,6 +58,8 @@ Unfortunately the cost of solving a CSP is dependent on the size of the solution
 
 
 -   Save/Load: Use JSON serialization for storing object data. Represent constraints as objects using relation and operator primitives, enabling dynamic constraint creation. 
+
+-   Example: Demonstrate all features of the framework through the implementation of a procedural forest ecosystem. Show how qualitative traits can be related to quantitive values with a set of simple rules, enabling automatic microscopic quantative changes to the ecoystem governed by macroscopic qualitative changes.
     
 
 **Conclusion:** 
@@ -88,55 +90,69 @@ For large complex objects it may be desirable for a random number of objects to 
 
  - Layers: With increasing complexity of an object, can lead to exponential growth in the size of the CSP graph. To utilize this framwork optimally it is best to decouple properties of objects into independent layers that can be computed in parallel or sequential layers. For example if the location of branches depends on the location of the trunk, one can decouple this by having the branch location property describe local displacament from the trunk so it can be calculated in parallel or for the trunk location to be used to generate the domain for the branches so that it could be calculated sequentially. 
 
-**Proposed Layers of Problems (Outdated):**
+**Procedural Forest Implementation**
 
-Forest:
-Properties: 
-Ecosystem Graph - A graph describing what something in the forest consumes and what it produces e.g. sun consumes nothing and produces heat and light, plants consume light and produce foliage, etc... 
-Populations List: - A list of all the flora, fauna, and abiotic entities in the ecosystem (linked to a node in the ecosystem graph), detailing what traits and organs they have that enable to satisfy the constraints of their consumtion and production. Each population also has properties like population size, individual size, speed, hunger, efficiency, etc... These are constrained so that the ecosystem is in equilibrium. The population also includes location preferences like evenly distributed, nearness to resources, etc...
-Entities List: - A list of individual entities and their locations in the forest. This list is only populated as needed 
-Evolution Constraints - Evolve the system so that the populations sizes change and thus there is a new distribution of entities.
+The forest is fantasy themed in a game environment, filled with unusual creatures described by RPG stats (Strength, Dexterity, Constitution etc...). Like a real ecosystem, we want to generate the forest such that energy flows through it in a cycle with clear predator-prey (or more complex) relations. To create these relations, we will describe the strengths and weakness of these creatures with generalizations on their stats and abilities like strong and fast or cunning and agile etc... Then the relations between creatures define the constraints on those creature's traits, e.g. predators strengths should capitalize on prey's weaknesses or symbiotes should cover each other's weakenesses. The creatures themselves consist of a set of body parts nested in a tree like structure. Each part granting stats, abilities, or room to attach more parts. The final set and layout of parts satisfies the given strengths and weaknesses. In this way, we generate the ecosystem top down; starting with qualitive descriptions, we constrain the values of our final creature objects until we get the desired quantitive outcome that matches our descriptions.
 
-Population:
-population size: {integer 0 to infinity}
-pack distribution constraints : {random, adjacent to entity by radius, away from entity by radius}
-pack sizes : {0 to infinity}
+- Forest Object:
+    - Meta Layer:
+        - size: Number of populations of creatures inhabiting the forest as well as the physical size
+        - theme: A template of constraints to impose onto the ecosystem graph, gives a specific 'feeling' to the forest harmony vs competition vs. etc...
+    - Ecosystem Graph Layer: i from 0 to size, j = i_pop1 * (size - 1) + i_pop2:
+        - ecoNode[i]: Defines the ith population's job in the ecosystem
+        - ecoArc[j]: Defines the relation between pop1 and pop2 from the perspective of pop1
+    - Population Layer:
+        - traits[i]: The physical characteristics of the creatures in population i, constraints on the population's ideal creature that garuntee certain body parts, min / max stats, or statuses necessary for fulfilling the job or ensuring the ecosystem graph's arcs hold true
+        - popSize[i]: How many individual creatures exist in this population
+        - popEnergy[i]: How many total resources to allocate to this population
+        - packSize[i]: How many creatures should be generated together
+        - packDistribution[i]: Where should packs generate, if random perturb a grid, otherwise do something else.
 
-Entity:
-recipes: {(consumption, efficiency, production), fill in list of consumptions/productions from appropriate ecosystem graph}
-actions: {(consumption, cost, time, outcome function) idk}
-statuses: {list of string tags}
-composition: {resource -> percentage composition}
-resources: {string resources name: float value}
-location: x,y,z coordinates
-size: unity object's scale
-orientation: 2pi/16 * n
-draw function: by default draw a cube of size size at location with orientation orientation
+ - Population:
+    - Ideal Creature: An instance of a creature in perfect health, so instances of undamaged creatures can point to this readonly copy until changes need to be made. 
+    - Pack Details: Describes the size and distribution.
+    - Creatures: A list of all creatures in the population organized by their packs.
 
+ - Creature:
+    - Model:
+        - bodyParts: The root node of the body parts
+        - status: The sum of all the parts, showing net stats and abiltities, temporary statuses, and calculated values like move speed
+        - Tags: Describes the creature based on the structure of its body part graph, ecosystem job, or traits e.g. bipedal, scavenger, and cunning
+    - Simulation: 
+        - tasks: a set of actions that have costs and requirments but can produce results
+        - values: a set of incentives and restrictions on the set of actions that change the utility of costs and results
+        - priorities: needs like hunger, thirst, and rest that need to be sustained through tasks, if the priority isnt met, enqueue a task to the task stack
+        - TaskStack: a stack of tasks, queued by priorities and carried out during simulation ticks, tasks can recursively generate new tasks to help satisfy unmet conditions
+        - Reactions: Conditions to check every few simulation ticks that can interrupt and redirect tasks in the task stack in response to sensory input. E.g. if near a predator stop everything and queue a flee type task
+    - View:
+        - location, size, orientation etc...:
+        - style: how to synthesize all the bodyparts together into a single creature
 
-Procedural Template Plant Entity:
-recipes domain includes: photosynthesis
+Loaded primitive data, not procedural:
+ - Traits: Qualitatively describes a creature
+    - Tags: Describes the trait, i.e. strength or weakness and how: mobility, offence, defence, etc... 
+    - Constraint: a set of constraints either to be applied to itself, the population, or the inidividual e.g. include or exclude other traits, min or max pack size, or minimum or maximum stat values. 
 
-Procedural Template Animal Entity:
+ - Bodypart: Quantitatively describe a part of a creature
+    - Durability: How much damage the part can take
+    - Abilities: What the part does for the creature
+    - Tags: Describes the part so it can be filtered by constraints
+    - Part Graph: A gridlike inventory with type restricted slots indicating attached parts or organs
 
-Procedural Template Tree Plant Entity:
+ - Abilities: Either actively or passively alters a creatures status, i.e. affecting their temporary condition or needs
+    - Name, Description, Unique ID, Icon
+    - conditions: A set of constraints to be satisfied before using the ability
+    - prediction: What the expected outcome of the ability is
+    - evaluation: Perform the ability (like triggering a root motion animation)
 
-Procedural Template Predator Animal Entity:
+The simulation implemenation will be further defined at a later date.
 
-Procedural Template Prey Animal Entity:
+ - Tasks:
 
-Procedural Template Herbivor Animal Entity:
+ - Values:
 
-Recipe Objects: (resources in, cost per unit of, resource out)
-Photosynthesis: sun to energy.
-Grow(foliage, fruit, shell): energy to foliage etc...
-Eat(foliage, fruit, etc...): reousrce to energy...
+ - Priorities:
 
-Action Objects: (resources in and costs or condition, time steps, function out)
-Grow: cost energy takes 1 unit of time, increases size
-Die: convert size to composition resources evenly
-Scavenge: be near to a dead entity, take time based on enetity size, utilize recipes on dead entities resources, delete dead entity
-Travel: takes energy, takes time * speed, updates ones location.
-Harden Shell: cost shell and energy, takes some time, increase composition that is shell
+- Tag:
+    - Name, Description, Unique ID, Icon
 
-This way the simulation of the forest is constrained that the entities must be the result of actions
