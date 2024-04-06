@@ -7,9 +7,12 @@
 **
 
 ## Current Implementation and Changes
+April 1
+ - Defined primitive values for the showcase example
+
 March 26
  - New class design
- - Changed from City application to forest application
+ - Changed Showcase example from City (building and resident simulation) to Fantasy Ecosystem (jobs/traits and creatures)
  - Refactored Backtracking
  - Implemented Arc Consistency Algorithm
  - Updated README with plans
@@ -121,7 +124,7 @@ The forest is fantasy themed in a game environment, filled with unusual creature
     - Simulation: 
         - tasks: a set of actions that have costs and requirments but can produce results
         - values: a set of incentives and restrictions on the set of actions that change the utility of costs and results
-        - priorities: needs like hunger, thirst, and rest that need to be sustained through tasks, if the priority isnt met, enqueue a task to the task stack
+        - priorities: a list of need stats like hunger, thirst, and rest that need to be sustained through tasks, if the priority isnt met, enqueue a task to the task stack
         - TaskStack: a stack of tasks, queued by priorities and carried out during simulation ticks, tasks can recursively generate new tasks to help satisfy unmet conditions
         - Reactions: Conditions to check every few simulation ticks that can interrupt and redirect tasks in the task stack in response to sensory input. E.g. if near a predator stop everything and queue a flee type task
     - View:
@@ -129,6 +132,11 @@ The forest is fantasy themed in a game environment, filled with unusual creature
         - style: how to synthesize all the bodyparts together into a single creature
 
 Loaded primitive data, not procedural:
+ - Stats:
+    - Name, Description, Icon
+    - Base: the base value granted by body parts, shouldn't change unless the body parts change
+    - Affectors: a stack of buffs and debuffs that composed operate on the base value, returning the real stat value
+
  - Traits: Qualitatively describes a creature
     - Tags: Describes the trait, i.e. strength or weakness and how: mobility, offence, defence, etc... 
     - Constraint: a set of constraints either to be applied to itself, the population, or the inidividual e.g. include or exclude other traits, min or max pack size, or minimum or maximum stat values. 
@@ -151,7 +159,7 @@ The simulation implemenation will be further defined at a later date.
 
  - Values:
 
- - Priorities:
+ - Needs:
 
 - Tag:
     - Name, Description, Unique ID, Icon

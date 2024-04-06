@@ -1,10 +1,9 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
-using Newtonsoft.Json;
 using UnityEngine;
 
 public class TestCSP : MonoBehaviour{
+    /**
     public void Start(){
         //Can create a default domain
         object[] d1 = new object[8]{9,2,3,4,5,6,7,8};
@@ -39,6 +38,11 @@ public class TestCSP : MonoBehaviour{
 
     }
 
+    **/
+
+    public void Start(){
+        var test = new EcosystemObject();
+    }
     public sealed class Disjoint : Relation
     {
         public static readonly Lazy<Disjoint> singleton = new Lazy<Disjoint>();

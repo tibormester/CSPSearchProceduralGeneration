@@ -36,9 +36,9 @@ public class ProceduralObject{
             //shrinks the partial domains
             layer.ArcConsistencySolve(errorThreshold);
             //Solves the shrunk problem
-            var vals = layer.BacktrackingSolve();
+            Dictionary<string, object> vals = layer.BacktrackingSolve();
             values.AddRange(vals);
-            solution.AddRange(vals);
+            //solution.AddRange(vals);
         }
         return values;
     }
@@ -71,6 +71,10 @@ public class ProceduralObject{
 public class CSPGraph{
     public Variable[] variables;
     public Constraint[] constraints;
+
+    public Func<int, int> orderSelector = trivial;
+    public static int trivial(int x){return x;}
+
     public CSPGraph(Variable[] vars, Constraint[] cons){
         variables = vars;
         constraints = cons;
@@ -96,7 +100,7 @@ public class CSPGraph{
         Variable variable = NextVariable(variables.Except(assignments.Keys), var => -1 * var.constraints.Length);
         //Get the ordered list of values
         int[] values = variable.NextValues(index => index);
-        foreach(int value in values){
+        foreach(int value in values.OrderBy(orderSelector)){
             int oldError = errors;
             foreach(Constraint constraint in variable.constraints){
                 errors += constraint.ArcConsistency(variable, value, errorThreshold);
@@ -338,5 +342,4 @@ public class Constraint{
 **/
 public interface Relation{
     public int evaluate(object[] values, ProceduralObject obj);
-    public int evaluate(object[] values);
 }
