@@ -252,14 +252,15 @@ public class Variable{
 public class Constraint{
     //public string[] variableNames;
     public Variable[] variables; 
-    public Relation relation;
+
+    public Func<object[], ProceduralObject, int> relation;
     public ProceduralObject obj;
 
     /**
         when we initialize a constraint it is done with variable objects, 
         set these variable objects to have a refrence to the constraint
     **/
-    public Constraint(Variable[] vars, Relation rel){
+    public Constraint(Variable[] vars, Func<object[], ProceduralObject, int> rel){
         variables = vars;
         relation = rel;
         for(int i = 0; i < variables.Length; i++){
@@ -317,7 +318,7 @@ public class Constraint{
                     values[i] = variables[i].GetValue(variables[i].partialSolution[indicies[i]]);
                 }
             }
-            int error = relation.evaluate(values, obj);
+            int error = relation.Invoke(values, obj);
             if (error < errorThreshold){
                 //Check if these values work, if they do, we are done and check the next value
                 return error;
@@ -338,13 +339,4 @@ public class Constraint{
         }
         return errorThreshold;
     }
-}
-
-/**
-    Use a reference to the procedural object incase it needs access to data from other layers
-    the int values 0 represents true, > 0 represents false with increasing magnitude being more false
-    The int values < 0 represents a solution that enables future errors.... ?
-**/
-public interface Relation{
-    public int evaluate(object[] values, ProceduralObject obj);
 }

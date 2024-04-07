@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class EcosystemObject : ProceduralObject
@@ -70,6 +71,16 @@ public class EcosystemObject : ProceduralObject
             }
             Debug.Log("The given Node isn't in the set of edges");
             return -1;
+        }
+        public Variable Edge(EcoNode tail){
+            foreach(int edgeIndex in EdgeIndicies()){
+                if(Tail(edgeIndex) == tail){
+                    int relativeIndex = edgeIndex - (JobIndex() + 2);
+                    return edges[relativeIndex];
+                }
+            }
+            Debug.LogWarning("Couldnt find an edge to the specified tail");
+            return null;
         }
 
         /** Get the tail's job index from a given edge index **/
@@ -149,44 +160,68 @@ public class EcosystemObject : ProceduralObject
         // the node is the index divided by (edges = # species - 1) + (2 = job + trophic level)
         return nodes[variableIndex / (speciesCount + 1)];
     }
+    public List<Constraint> EachNode(Func<object[], EcoNode, EcosystemObject, int> f){
+        List<Constraint> cons = new();
+        foreach(EcoNode node in nodes){
+            Variable[] vars = new Variable[] {node.job, node.trophicLevel }.Concat(node.edges).ToArray();
+            Func<object[], ProceduralObject, int> func = (vals, obj) => f.Invoke(vals, node, (EcosystemObject)obj);
+            Constraint c = new Constraint(vars, func);
+            cons.Add(c);
+        }
+        return cons;
+    }
+    public List<Constraint> EachEdge(Func<object, object, object, object, object, object, EcosystemObject, int> f){
+        List<Constraint> cons = new();
+        foreach(EcoNode node in nodes){
+            foreach(int edgeIndex in node.EdgeIndicies()){
+                var tail = node.Tail(edgeIndex);
+                Variable[] vars = new Variable[] {node.job, node.trophicLevel, node.Edge(tail), tail.Edge(node), tail.job, tail.trophicLevel };
+                Func<object[], ProceduralObject, int> func = (vals, obj) => f.Invoke(vals[0], vals[1], vals[2], vals[3], vals[4], vals[5],(EcosystemObject)obj);
+                Constraint c = new Constraint(vars, func);
+                cons.Add(c);
+            }
+        }
+        return cons;
+    }
+
     public Constraint[] GetConstraints(){
-        return new Constraint[2]{
-            //Makes sure the carnivores have prey and that the prey isnt a plant
-            new Constraint(ecoVariables, new EachNode((vals, node, system) => {
+        List<Constraint> cons = new();
+        cons.AddRange(EachEdge((hj, hl, hr, tr, tj, tl, system) => {
+            return ((string)hj == "Carnivore") ? ((string)hr == "Predation" && ((string)tj == "Photosynthesizer")) ? 1 : 0 : 0;}));
+        cons.AddRange(EachNode((vals, node, system) => {
                 int minimum_predation = 1;
                 int maximum_reward = 0;
-                int errors = 0;
-                if ((string)vals[node.JobIndex()] == "Carnivore"){
+                if ((string)vals[0] == "Carnivore"){
                     foreach(int edge in node.EdgeIndicies()){
-                        minimum_predation -= ((string)vals[edge] == "Predation" && ((string)vals[node.TailIndex(edge)] != "Photosynthesizer")) ? 1 : 0;
-                        errors += ((string)vals[edge] == "Predation" && ((string)vals[node.TailIndex(edge)] == "Photosynthesizer")) ? 1 : 0;
+                        int e = edge - node.JobIndex();
+                        minimum_predation -= ((string)vals[e] == "Predation" ) ? 1 : 0;
                     }
-                    return Math.Max(maximum_reward, Math.Max(minimum_predation, errors));
                 }
-                return 0;
-            })),
-            //Makes sure herbivores have plants and dont eat anything else
-            new Constraint(ecoVariables, new EachNode((vals, node, system) => {
+                return Math.Max(maximum_reward, minimum_predation);
+            }));
+    /**
+        cons.AddRange(EachNode((vals, node, system) => {
                 int minimum_predation = 1;
                 int maximum_reward = 0;
                 int errors = 0;
                 if ((string)vals[node.JobIndex()] == "Herbivore"){
                     foreach(int edge in node.EdgeIndicies()){
+                        int e = edge - node.JobIndex();
                         minimum_predation -= ((string)vals[edge] == "Predation" && ((string)vals[node.TailIndex(edge)] == "Photosynthesizer")) ? 1 : 0;
                         errors += ((string)vals[edge] == "Predation" && ((string)vals[node.TailIndex(edge)] != "Photosynthesizer")) ? 1 : 0;
                     }
                     return Math.Max(maximum_reward, Math.Max(minimum_predation, errors));
                 }
                 return 0;
-            })),
-            //Makes sure the herbivores 
-        };
+            }));
+        **/
+        return cons.ToArray();
     }
 
     /**
         A relation that sums the error over all nodes, the function given in its construction is basically an ecosystem relation too
         It must take in the set of values, the specific node, and then the ecosystem object and return an int value
-    **/
+    
     public class EachNode : Relation{
         public Func<object[], EcoNode, EcosystemObject, int> function;
         public EachNode(Func<object[], EcoNode, EcosystemObject, int> f){function = f;}
@@ -201,10 +236,12 @@ public class EcosystemObject : ProceduralObject
             return errors;
         }
     }
+    **/
+
     /**
         A relation that sums the error over all edges, each edge is counted twice, once from each direction
         the given function takes in a head value, trophic level, forward relation value, backwards relation value, the tail value, and trophic level
-    **/
+    
     public class EachEdge: Relation{
         public Func<object, object, object, object, object, object, int> function;
         public EachEdge(Func<object, object, object, object, object, object, int> jobA_levelA_relationA_relationB_jobB_levelB){function = jobA_levelA_relationA_relationB_jobB_levelB;}
@@ -222,5 +259,5 @@ public class EcosystemObject : ProceduralObject
             return errors;
         }
     }
-
+    **/
 }
