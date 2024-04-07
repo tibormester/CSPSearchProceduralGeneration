@@ -6,10 +6,10 @@ using UnityEngine;
 
 public class EcosystemObject : ProceduralObject
 {
-    public static int MIN_SPECIES = 5;
-    public static int MAX_SPECIES = 15;
-    public static int MIN_TROPHIC_LEVELS = 3;
-    public static int MAX_TROPHIC_LEVELS = 5;
+    public static int MIN_SPECIES = 4;
+    public static int MAX_SPECIES = 7;
+    public static int MIN_TROPHIC_LEVELS = 2;
+    public static int MAX_TROPHIC_LEVELS = 4;
 
     public int speciesCount;
 
@@ -17,37 +17,18 @@ public class EcosystemObject : ProceduralObject
     public Dictionary<string, object> valueLookup; //keys will be from jobs or relationships array and values will be idk...
     
     //Our domains for each node and edge
-    public object[] jobs = new string[3]{
+    public object[] jobs = new string[4]{
         "Photosynthesizer",
         "Herbivore",
         "Carnivore",
-    };
-    public object[] relationships = new string[3]{
-        "Predation",
-        "Competition",
-        "Neutralism",
-    };
-    /**
-    public object[] jobs = new string[8]{
-        "Photosynthesizer",
-        "Chemosynthesizer",
-        "Herbivore",
-        "Omnivore",
-        "Carnivore",
-        "Detrivore",
         "Decomposer",
-        "Scavenger",
     };
-    public object[] relationships = new string[7]{
+    public object[] relationships = new string[4]{
         "Predation",
-        "Parasitism",
         "Mutualism",
-        "Commensalism",
         "Competition",
-        "Ammensalism",
         "Neutralism",
     };
-    **/
     public object[] trophicLevels;
     
 
@@ -142,9 +123,11 @@ public class EcosystemObject : ProceduralObject
         //this.Solve(new int[]{0});//Tells this object to try and solve our first layer, uses arc consistency first which is slow
         //Debug.Log(JsonConvert.SerializeObject(solution));
 
-        //Set the first layer to assign random values first
         var rand = new System.Random();
-        layers[0].orderSelector = (x) => rand.Next();
+        layers[0].domainSelector = (x) => rand.Next();
+
+        //need to order evaluation of variables so it does niches first everything else after
+        layers[0].variableSelector= (var) => (var.name.Contains("niche")) ? 0 : 1;
 
         var sol = layers[0].BacktrackingSolve();
         Debug.Log(JsonConvert.SerializeObject(sol));
@@ -167,52 +150,38 @@ public class EcosystemObject : ProceduralObject
         return nodes[variableIndex / (speciesCount + 1)];
     }
     public Constraint[] GetConstraints(){
-        return new Constraint[5]{
-            /**a constraint that sums over each node**/
-            new Constraint(ecoVariables, new EachNode((vals, node, system) => 0)),
-            /**a constraint that sums over the values at each edge**/
-            new Constraint(ecoVariables, new EachEdge((hj, hl, hr, tr, tj, tl) => 0)),
-            //Ensures Carnivores have a minimum number of predation relations
+        return new Constraint[2]{
+            //Makes sure the carnivores have prey and that the prey isnt a plant
             new Constraint(ecoVariables, new EachNode((vals, node, system) => {
                 int minimum_predation = 1;
                 int maximum_reward = 0;
+                int errors = 0;
                 if ((string)vals[node.JobIndex()] == "Carnivore"){
                     foreach(int edge in node.EdgeIndicies()){
-                        minimum_predation -= ((string)vals[edge] == "Predation") ? 1 : 0;
+                        minimum_predation -= ((string)vals[edge] == "Predation" && ((string)vals[node.TailIndex(edge)] != "Photosynthesizer")) ? 1 : 0;
+                        errors += ((string)vals[edge] == "Predation" && ((string)vals[node.TailIndex(edge)] == "Photosynthesizer")) ? 1 : 0;
                     }
-                    return Math.Max(maximum_reward, minimum_predation);
+                    return Math.Max(maximum_reward, Math.Max(minimum_predation, errors));
                 }
                 return 0;
             })),
-            
-            //Ensures Herbivores have a minimum number of predation relations
+            //Makes sure herbivores have plants and dont eat anything else
             new Constraint(ecoVariables, new EachNode((vals, node, system) => {
                 int minimum_predation = 1;
                 int maximum_reward = 0;
+                int errors = 0;
                 if ((string)vals[node.JobIndex()] == "Herbivore"){
                     foreach(int edge in node.EdgeIndicies()){
-                        minimum_predation -= ((string)vals[edge] == "Predation") ? 1 : 0;
+                        minimum_predation -= ((string)vals[edge] == "Predation" && ((string)vals[node.TailIndex(edge)] == "Photosynthesizer")) ? 1 : 0;
+                        errors += ((string)vals[edge] == "Predation" && ((string)vals[node.TailIndex(edge)] != "Photosynthesizer")) ? 1 : 0;
                     }
-                    return Math.Max(maximum_reward, minimum_predation);
+                    return Math.Max(maximum_reward, Math.Max(minimum_predation, errors));
                 }
                 return 0;
             })),
-            //Ensures that herbivores only have a predation relation on photosynthesizers
-            new Constraint(ecoVariables, new EachEdge((hj, hl, hr, tr, tj, tl) => {
-                if((string)hj == "Herbivore"){
-                    if((string)hr == "Predation"){
-                        if((string)tj != "Photosynthesizer"){
-                            return 1;
-                        }
-                    }
-                }
-                return 0;
-            })),
-
-
+            //Makes sure the herbivores 
         };
     }
-
 
     /**
         A relation that sums the error over all nodes, the function given in its construction is basically an ecosystem relation too
@@ -246,7 +215,6 @@ public class EcosystemObject : ProceduralObject
             int errors = 0;
             foreach(EcoNode node in sys.nodes){
                 foreach(int edgeIndex in node.EdgeIndicies()){
-
                     var tail = node.Tail(edgeIndex);
                     errors += function(values[node.JobIndex()], values[node.TrophicLevelIndex()], values[edgeIndex], values[tail.EdgeIndex(node)], values[tail.JobIndex()], values[tail.TrophicLevelIndex()]);
                 }

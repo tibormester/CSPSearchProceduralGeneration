@@ -72,8 +72,10 @@ public class CSPGraph{
     public Variable[] variables;
     public Constraint[] constraints;
 
-    public Func<int, int> orderSelector = trivial;
+    public Func<int, int> domainSelector = trivial;
+    public Func<Variable, int> variableSelector = leastConstrained;
     public static int trivial(int x){return x;}
+    public static int leastConstrained(Variable var){return -1 * var.constraints.Length;}
 
     public CSPGraph(Variable[] vars, Constraint[] cons){
         variables = vars;
@@ -97,10 +99,10 @@ public class CSPGraph{
     private int BacktrackingHelper(Dictionary<Variable, int>assignments, int errorThreshold = 1, int errors = 0){
         if(assignments.Keys.Count == variables.Length)return errors;
         //sort variables by number of constriants and start with most to least
-        Variable variable = NextVariable(variables.Except(assignments.Keys), var => -1 * var.constraints.Length);
+        Variable variable = NextVariable(variables.Except(assignments.Keys), variableSelector);
         //Get the ordered list of values
-        int[] values = variable.NextValues(index => index);
-        foreach(int value in values.OrderBy(orderSelector)){
+        int[] values = variable.partialSolution.ToArray();
+        foreach(int value in values.OrderBy(domainSelector)){
             int oldError = errors;
             foreach(Constraint constraint in variable.constraints){
                 errors += constraint.ArcConsistency(variable, value, errorThreshold);
@@ -119,7 +121,10 @@ public class CSPGraph{
         }
         //If we get to hear then non of the values are valid so we backtrack
         //If assignmnets.keys.count == 0 then we are at the base and it is overly constrained
-        if(assignments.Keys.Count == 0) Debug.LogWarning("Backtracking was exhausted without a solution, problem is overly constrained");
+        if(assignments.Keys.Count == 0){
+            Debug.LogWarning("Backtracking was exhausted without a solution, problem is overly constrained");
+            return BacktrackingHelper(assignments, errorThreshold + 1, 0);
+        } 
         return errorThreshold;
     }
 
