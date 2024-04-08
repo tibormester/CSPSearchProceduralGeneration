@@ -71,8 +71,6 @@ public class ProceduralObject{
 public class CSPGraph{
     public Variable[] variables;
     public Constraint[] constraints;
-
-    public Func<int, int> domainSelector = trivial;
     public Func<Variable, int> variableSelector = leastConstrained;
     public static int trivial(int x){return x;}
     public static int leastConstrained(Variable var){return -1 * var.constraints.Length;}
@@ -91,9 +89,9 @@ public class CSPGraph{
 
     note that when we use value and values we are actually using the int index of the value/values in the domain array
     **/
-    public Dictionary<string, object> BacktrackingSolve(){
+    public Dictionary<string, object> BacktrackingSolve(int errorThreshold = 1){
         Dictionary<Variable, int> assignments = new();
-        BacktrackingHelper(assignments, 1, 0);
+        BacktrackingHelper(assignments, errorThreshold, 0);
         return CastSolution();
     }
     private int BacktrackingHelper(Dictionary<Variable, int>assignments, int errorThreshold = 1, int errors = 0){
@@ -102,7 +100,7 @@ public class CSPGraph{
         Variable variable = NextVariable(variables.Except(assignments.Keys), variableSelector);
         //Get the ordered list of values
         int[] values = variable.partialSolution.ToArray();
-        foreach(int value in values.OrderBy(domainSelector)){
+        foreach(int value in values.OrderBy(variable.domainSelector)){
             int oldError = errors;
             foreach(Constraint constraint in variable.constraints){
                 errors += constraint.ArcConsistency(variable, value, errorThreshold);
@@ -212,6 +210,7 @@ public class Variable{
         set  {PartialSolution = value;}}
 
     public int domainSize {get => partialSolution.Count;}
+    public Func<int, int> domainSelector = (x) => x;
 
     //Initialize this to size zero with the constructor so we can append constraints as we define them
     public Constraint[] constraints;
@@ -252,7 +251,7 @@ public class Variable{
 public class Constraint{
     //public string[] variableNames;
     public Variable[] variables; 
-
+    //Maybe make a way to sum together constraints if they act on the same set of variables???
     public Func<object[], ProceduralObject, int> relation;
     public ProceduralObject obj;
 

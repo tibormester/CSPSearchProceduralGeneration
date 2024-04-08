@@ -93,74 +93,67 @@ For large complex objects it may be desirable for a random number of objects to 
 
  - Layers: With increasing complexity of an object, can lead to exponential growth in the size of the CSP graph. To utilize this framwork optimally it is best to decouple properties of objects into independent layers that can be computed in parallel or sequential layers. For example if the location of branches depends on the location of the trunk, one can decouple this by having the branch location property describe local displacament from the trunk so it can be calculated in parallel or for the trunk location to be used to generate the domain for the branches so that it could be calculated sequentially. 
 
-**Procedural Forest Implementation**
+**Examples**
+Ecosystem Graph Generation:
+Input Constraints:
 
-The forest is fantasy themed in a game environment, filled with unusual creatures described by RPG stats (Strength, Dexterity, Constitution etc...). Like a real ecosystem, we want to generate the forest such that energy flows through it in a cycle with clear predator-prey (or more complex) relations. To create these relations, we will describe the strengths and weakness of these creatures with generalizations on their stats and abilities like strong and fast or cunning and agile etc... Then the relations between creatures define the constraints on those creature's traits, e.g. predators strengths should capitalize on prey's weaknesses or symbiotes should cover each other's weakenesses. The creatures themselves consist of a set of body parts nested in a tree like structure. Each part granting stats, abilities, or room to attach more parts. The final set and layout of parts satisfies the given strengths and weaknesses. In this way, we generate the ecosystem top down; starting with qualitive descriptions, we constrain the values of our final creature objects until we get the desired quantitive outcome that matches our descriptions.
+ - Carnivores cant eat Plants
+ - Herbivores cant eat anything but plants
+ - Plants cant eat anything
+ - Something eating something else must be at a higher trophic level
+ - Things with the same job at the same trophic level must compete
+ - Competition must be mutual
+ - Carnivores and herbivores must eat at least 1 thing
+ - There is at least 1 carnivore
 
-- Forest Object:
-    - Meta Layer:
-        - size: Number of populations of creatures inhabiting the forest as well as the physical size
-        - theme: A template of constraints to impose onto the ecosystem graph, gives a specific 'feeling' to the forest harmony vs competition vs. etc...
-    - Ecosystem Graph Layer: i from 0 to size, j = i_pop1 * (size - 1) + i_pop2:
-        - ecoNode[i]: Defines the ith population's job in the ecosystem
-        - ecoArc[j]: Defines the relation between pop1 and pop2 from the perspective of pop1
-    - Population Layer:
-        - traits[i]: The physical characteristics of the creatures in population i, constraints on the population's ideal creature that garuntee certain body parts, min / max stats, or statuses necessary for fulfilling the job or ensuring the ecosystem graph's arcs hold true
-        - popSize[i]: How many individual creatures exist in this population
-        - popEnergy[i]: How many total resources to allocate to this population
-        - packSize[i]: How many creatures should be generated together
-        - packDistribution[i]: Where should packs generate, if random perturb a grid, otherwise do something else.
+Resulting Output:
 
- - Population:
-    - Ideal Creature: An instance of a creature in perfect health, so instances of undamaged creatures can point to this readonly copy until changes need to be made. 
-    - Pack Details: Describes the size and distribution.
-    - Creatures: A list of all creatures in the population organized by their packs.
+"species 0 niche": "Carnivore",
+"species 0 trophic level": 1,
+    "species 0 to species 3": "Mutualism",
+    "species 0 to species 5": "Predation",
+  
+"species 1 niche": "Photosynthesizer",
+"species 1 trophic level": 0,
+  "species 1 to species 2": "Competition",
+  "species 1 to species 4": "Competition",
+  "species 1 to species 5": "Mutualism",
+  "species 1 to species 6": "Competition",
 
- - Creature:
-    - Model:
-        - bodyParts: The root node of the body parts
-        - status: The sum of all the parts, showing net stats and abiltities, temporary statuses, and calculated values like move speed
-        - Tags: Describes the creature based on the structure of its body part graph, ecosystem job, or traits e.g. bipedal, scavenger, and cunning
-    - Simulation: 
-        - tasks: a set of actions that have costs and requirments but can produce results
-        - values: a set of incentives and restrictions on the set of actions that change the utility of costs and results
-        - priorities: a list of need stats like hunger, thirst, and rest that need to be sustained through tasks, if the priority isnt met, enqueue a task to the task stack
-        - TaskStack: a stack of tasks, queued by priorities and carried out during simulation ticks, tasks can recursively generate new tasks to help satisfy unmet conditions
-        - Reactions: Conditions to check every few simulation ticks that can interrupt and redirect tasks in the task stack in response to sensory input. E.g. if near a predator stop everything and queue a flee type task
-    - View:
-        - location, size, orientation etc...:
-        - style: how to synthesize all the bodyparts together into a single creature
+"species 2 niche": "Photosynthesizer",
+"species 2 trophic level": 1,
+  "species 2 to species 0": "Mutualism",
+  "species 2 to species 1": "Competition",
+  "species 2 to species 4": "Competition",
+  "species 2 to species 7": "Competition",
+  
+"species 3 niche": "Herbivore",
+"species 3 trophic level": 0,
+  "species 3 to species 0": "Mutualism",
+  "species 3 to species 5": "Competition",
+  "species 3 to species 6": "Predation",
+  "species 3 to species 7": "Mutualism",
 
-Loaded primitive data, not procedural:
- - Stats:
-    - Name, Description, Icon
-    - Base: the base value granted by body parts, shouldn't change unless the body parts change
-    - Affectors: a stack of buffs and debuffs that composed operate on the base value, returning the real stat value
+"species 4 niche": "Photosynthesizer",
+"species 4 trophic level": 1,
+  "species 4 to species 1": "Competition",
+  "species 4 to species 2": "Competition",
+  "species 4 to species 7": "Competition",
 
- - Traits: Qualitatively describes a creature
-    - Tags: Describes the trait, i.e. strength or weakness and how: mobility, offence, defence, etc... 
-    - Constraint: a set of constraints either to be applied to itself, the population, or the inidividual e.g. include or exclude other traits, min or max pack size, or minimum or maximum stat values. 
+"species 5 niche": "Herbivore",
+"species 5 trophic level": 0,
+  "species 5 to species 3": "Competition",
+  "species 5 to species 6": "Predation",
+  "species 5 to species 7": "Mutualism",
 
- - Bodypart: Quantitatively describe a part of a creature
-    - Durability: How much damage the part can take
-    - Abilities: What the part does for the creature
-    - Tags: Describes the part so it can be filtered by constraints
-    - Part Graph: A gridlike inventory with type restricted slots indicating attached parts or organs
+"species 6 niche": "Photosynthesizer",
+"species 6 trophic level": 0,
+  "species 6 to species 1": "Competition",
+  "species 6 to species 7": "Competition",
 
- - Abilities: Either actively or passively alters a creatures status, i.e. affecting their temporary condition or needs
-    - Name, Description, Unique ID, Icon
-    - conditions: A set of constraints to be satisfied before using the ability
-    - prediction: What the expected outcome of the ability is
-    - evaluation: Perform the ability (like triggering a root motion animation)
-
-The simulation implemenation will be further defined at a later date.
-
- - Tasks:
-
- - Values:
-
- - Needs:
-
-- Tag:
-    - Name, Description, Unique ID, Icon
+"species 7 niche": "Photosynthesizer",
+"species 7 trophic level": 1,
+  "species 7 to species 2": "Competition"
+  "species 7 to species 4": "Competition"
+  "species 7 to species 6": "Competition"
 

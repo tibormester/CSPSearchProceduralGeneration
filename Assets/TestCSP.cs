@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class TestCSP : MonoBehaviour{
@@ -44,7 +46,16 @@ public class TestCSP : MonoBehaviour{
 
     public void Start(){
         var test = new EcosystemObject();
+        var sol = test.layers[0].BacktrackingSolve(1);
+        for(int i = sol.Count - 1; i >= 0; i--){
+            KeyValuePair<string,object> kvp = sol.ElementAt(i);
+            if (kvp.Value is string && (string)kvp.Value == "Neutralism"){
+                sol.Remove(kvp.Key);
+            }
+        }
+        Debug.Log(JsonConvert.SerializeObject(sol, Formatting.Indented));
     }
+    
     public Func<object[], ProceduralObject, int> Disjoint = (values,  obj) =>
         {
             int count = 0;
@@ -61,4 +72,5 @@ public class TestCSP : MonoBehaviour{
             };
         return f;
     }
+
 }
