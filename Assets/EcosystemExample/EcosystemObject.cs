@@ -17,11 +17,10 @@ public class EcosystemObject : ProceduralObject
     public Dictionary<string, object> valueLookup; //keys will be from jobs or relationships array and values will be idk...
     
     //Our domains for each node and edge
-    public object[] jobs = new string[4]{
+    public object[] jobs = new string[3]{
         "Photosynthesizer",
         "Herbivore",
         "Carnivore",
-        "Decomposer",
     };
     public static System.Random rand = new System.Random();
     //if the object is closer to the front of the domain array, it is more likely to be sorted higher
@@ -29,11 +28,10 @@ public class EcosystemObject : ProceduralObject
         int variability = 8; //how many values should a given value overlap with, anything beyond variablity distance in the domain will be checked afterwards
         return rand.Next( x - (variability / 2), x + (variability / 2));
     };
-    public object[] relationships = new string[4]{
+    public object[] relationships = new string[3]{
         "Neutralism",
         "Competition",
         "Predation",
-        "Mutualism",
     };
     public object[] trophicLevels;
     
@@ -134,7 +132,7 @@ public class EcosystemObject : ProceduralObject
         ecoConstraints = GetConstraints();
         foreach(Constraint cons in ecoConstraints){cons.obj = this;};
 
-        layers = new CSPGraph[]{new CSPGraph(ecoVariables, ecoConstraints)};
+        layers = new Graph[]{new Graph(ecoVariables, ecoConstraints)};
         
         /**
         Func<int,int> randValue = (x) => rand.Next();

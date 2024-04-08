@@ -32,9 +32,9 @@ public class ProceduralForest : ProceduralObject
         **/
         Variable forestSize = new("size", new object[5]{3,4,5,6,7});
         Variable forestTheme = new("theme", new object[2]{"symbiotic", "predation"});
-        CSPGraph metaLayer = new(new Variable[2]{forestSize, forestTheme}, new Constraint[0]{});
+        Graph metaLayer = new(new Variable[2]{forestSize, forestTheme}, new Constraint[0]{});
         //Solve the first layer immediately to get info for the rest of the layers
-        this.layers = new CSPGraph[1]{metaLayer};
+        this.layers = new Graph[1]{metaLayer};
         this.Solve(0);
         int size = (int)this.solution["size"];
 
@@ -57,7 +57,7 @@ public class ProceduralForest : ProceduralObject
                 ecoArcs[j] = new Variable("ecoEdge"+i+"to"+j, relations);
             }
         }
-        CSPGraph ecoLayer = new(ecoArcs.Concat(ecoNodes).ToArray(), cons);
+        Graph ecoLayer = new(ecoArcs.Concat(ecoNodes).ToArray(), cons);
         this.layers.Append(ecoLayer);
         this.Solve(1);
 
@@ -99,7 +99,7 @@ public class ProceduralForest : ProceduralObject
             packDistribution[i] = new Variable("packdistribution"+i, packDistributions);
         }
         var vars = traits.Concat(popSize.Concat(popEnergy.Concat(packSize.Concat(packDistribution)))).ToArray();//Make more efficient with copy
-        this.layers.Append(new CSPGraph(vars, cons));
+        this.layers.Append(new Graph(vars, cons));
 
         /**
             Creature layers: template + instance,
@@ -120,7 +120,7 @@ public class ProceduralForest : ProceduralObject
         **/
     }
     public ProceduralForest(Variable[] vars, Constraint[] cons) : base(vars, cons){}
-    public ProceduralForest(Variable[] vars, Constraint[] cons, CSPGraph[] layers) : base(vars, cons, layers) {}
+    public ProceduralForest(Variable[] vars, Constraint[] cons, Graph[] layers) : base(vars, cons, layers) {}
 }
 
 public class Forest {
