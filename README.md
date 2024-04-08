@@ -1,26 +1,7 @@
 
-**
 
-## Procedural Forest Simulation by Constraint Satisfaction Problems
+## Procedural Ecosystem Generation and Simulation by Constraint Satisfaction Problems
 **CMSC421 Final Project**
-
-**
-
-## Current Implementation and Changes
-April 1
- - Defined primitive values for the showcase example
-
-March 26
- - New class design
- - Changed Showcase example from City (building and resident simulation) to Fantasy Ecosystem (jobs/traits and creatures)
- - Refactored Backtracking
- - Implemented Arc Consistency Algorithm
- - Updated README with plans
-
-Feb 27
-
- - Changed CSP to work with a list of ints that reference static arrays of variables and domain objects. Cuts down on memory issues significantly. 
-
 
 ## **Proposal**
 
@@ -93,8 +74,9 @@ For large complex objects it may be desirable for a random number of objects to 
 
  - Layers: With increasing complexity of an object, can lead to exponential growth in the size of the CSP graph. To utilize this framwork optimally it is best to decouple properties of objects into independent layers that can be computed in parallel or sequential layers. For example if the location of branches depends on the location of the trunk, one can decouple this by having the branch location property describe local displacament from the trunk so it can be calculated in parallel or for the trunk location to be used to generate the domain for the branches so that it could be calculated sequentially. 
 
-**Examples**
-Ecosystem Graph Generation:
+**Examples:**
+1. Ecosystem Graph Generation:
+
 Input Constraints:
 
  - Carnivores cant eat Plants
