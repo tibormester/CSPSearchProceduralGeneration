@@ -53,6 +53,12 @@ public class Constraint{
         return diff;
         
     }
+    public bool VariablesAssigned(){
+        foreach(Variable var in variables){
+            if (!var.assigned) return false;
+        }
+        return true;
+    }
     /**
     Given a variable and the index from the domain array of the value check to see if it is arc consistent, error threshold has to do with the relation and is returned on failure
     **/

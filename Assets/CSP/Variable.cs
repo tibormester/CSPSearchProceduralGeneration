@@ -17,6 +17,7 @@ public class Variable{
         set  {PartialSolution = value;}}
 
     public int domainSize {get => partialSolution.Count;}
+    public bool assigned {get => domainSize == 1 ? true : false;}
     public Func<int, int> domainSelector = (x) => x;
 
     //Initialize this to size zero with the constructor so we can append constraints as we define them
@@ -43,6 +44,7 @@ public class Variable{
             return vals;  
     }
     public  object GetValue(int index){return domain[index];}
+    public  object GetValue(){return domain[partialSolution[0]];}
     /**
     returns the partialsolution in the desired ordering
     A method for getting the next value using either a heursitic, randomness, or least constraining values

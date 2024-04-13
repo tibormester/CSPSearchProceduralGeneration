@@ -39,7 +39,8 @@ public class Graph{
         foreach(int value in values.OrderBy(variable.domainSelector)){
             int oldError = errors;
             foreach(Constraint constraint in variable.constraints){
-                errors += constraint.ArcConsistency(variable, value, errorThreshold);
+                if(constraint.VariablesAssigned())
+                    errors += constraint.ArcConsistency(variable, value, errorThreshold);
             }
             if (errors < errorThreshold){
                 assignments.Add(variable, value);

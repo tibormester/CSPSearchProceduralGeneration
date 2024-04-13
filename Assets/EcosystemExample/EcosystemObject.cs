@@ -1,13 +1,16 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Data.Common;
 using System.Linq;
+using TMPro;
+using Unity.VisualScripting;
 using UnityEngine;
 
 public class EcosystemObject : ProceduralObject
 {
-    public static int MIN_SPECIES = 6;
-    public static int MAX_SPECIES = 9;
+    public static int MIN_SPECIES = 15;
+    public static int MAX_SPECIES = 25;
     public static int MIN_TROPHIC_LEVELS = 3;
     public static int MAX_TROPHIC_LEVELS = 5;
 
@@ -44,12 +47,14 @@ public class EcosystemObject : ProceduralObject
 
 
     public EcoNode[] nodes;
+    //Nodes in the graph relating species niches, trophic levels, and jobs... 
     public class EcoNode{
         public string name;
         public Variable job;
         public Variable trophicLevel;
         public Variable[] edges;
         public EcosystemObject sys;
+        public Variable[] speciesAttributes;
         public EcoNode(EcosystemObject sys, string name = ""){
             this.name = name;
             this.sys = sys;
@@ -115,6 +120,16 @@ public class EcosystemObject : ProceduralObject
             int nodeIndex = Array.IndexOf(sys.nodes, this);
             return (nodeIndex * (sys.speciesCount + 1)) + 1;
         }
+        public (Variable, EcoNode)[] GetArcs(){
+            var arcs = new (Variable, EcoNode)[sys.speciesCount - 1];
+            int[] eIndicies = EdgeIndicies();
+            int jobIndex = JobIndex();
+            for(int i = 0; i < eIndicies.Length; i++){
+                int relativeIndex = eIndicies[i] - (jobIndex + 1);
+                arcs[i] = (edges[relativeIndex], Tail(eIndicies[i]));
+            }
+            return arcs;
+        }
     }
     public EcosystemObject(){
         //Determine Meta Attributes (basically the size of the ecosystem)
@@ -141,11 +156,162 @@ public class EcosystemObject : ProceduralObject
 
         //Later can implement probability distributions on the random value to influence the solution
         foreach(Variable var in ecoVariables){var.domainSelector = WEIGHTED_RANDOM;}
+    }
 
-        //need to order evaluation of variables so it does niches first everything else after
-        //layers[0].variableSelector= (var) => (var.name.Contains("niche")) ? 0 : 1;
+    /**
+        Once the graph variables have their values set, generate variables for traits and create creatures off of that...
+    **/
+    
+    /**
+        in an eco system there is finding (camo + stealth vs senses), catching (speed + agility vs endurance + shelter), killing (jaws + claws vs armour), then digesting (posion + seeds)...
+        Each species has a value for each of these traits and if it is a predator then its attributes work so it can catch its prey...
+        domains with as a type,cost tuple, specific domains are cross product ({types}, cost) typles where costs are multiplied
+        general domains: (underground, 2f), (ground, 1f), (canopy, 1.5f), (sky, 2.5f)...
+        cross product with the specific domains
+        shelter: permanent, temporary, mobile 
+        movement: none, standard, speed, endurance
+        feeding: search, wait
+    **/
+    public struct Trait{
+        public string name;
+        public string[] tags;
+        public float cost;
+        public string[] counters;
+        public string[] weaknesses; 
+        public Trait(string n = "", float c = 1f, string[] t = null, string[] s = null, string[] w = null){
+            name = n;
+            cost = c;
+            tags = t;
+            counters = s;
+            weaknesses = w;
+        }
+        //Basically sums together the traits and returns the list of tags that aren't countered by the other person's traits....
+        //The final list of traits is useful why??? Certain relations require each side to have different effective tags. If it is neutral with a carnivore then...??
+        public (string[], string[])  EffectiveTags(List<Trait> traitsA, List<Trait> traitsB){
+            //Construct a list of all present tags and traits
+            List<string> tagsA = new();
+            List<string> tagsB = new();
+            List<string> countersA = new();
+            List<string> countersB = new();
+            foreach(Trait t in traitsA){
+                tagsA.AddRange(t.tags);
+                tagsA.Add(t.name);
+            }
+            foreach(Trait t in traitsB){
+                tagsB.AddRange(t.tags);
+                tagsB.Add(t.name);
+            }
+            //Find the traits that have present weaknesses and remove them
+            traitsB.RemoveAll(trait => tagsA.Intersect(trait.weaknesses).Any());
+            traitsA.RemoveAll(trait => tagsB.Intersect(trait.weaknesses).Any());
+            
+            //Create the new list of tags without the traits that had weaknesses
+            tagsA = new();
+            tagsB = new();
+            foreach(Trait t in traitsA){
+                tagsA.AddRange(t.tags);
+                countersA.AddRange(t.counters);
+            }
+            foreach(Trait t in traitsB){
+                tagsB.AddRange(t.tags);
+                countersB.AddRange(t.counters);
+            }
+            
+            //Remove the tags that are countered
+            tagsA.RemoveAll(tag => countersB.Contains(tag));
+            tagsB.RemoveAll(tag => countersA.Contains(tag));
 
-       
+            return (tagsA.ToArray(), tagsB.ToArray());
+
+        }
+        // A trait gives the creature the tags.  it also removes the oppenets tags from the strengths (or if a trait name counters it...) iff the weakness doesn't exist in the opponent (as a trait or a tag)
+        //If a trait is countered remove an instance of all of its tags... if a tag is countered remove all instances of the tag
+    }
+    public object[] traits = new object[]{
+        //Predators hunting or prey avoiding being stalked
+        new Trait("Scent", 1.1f, new string[]{"Alert", "Search"}), new string[]{"Hidden"}, new string[]{"Stink"},
+        new Trait("Sight", 2.2f, new string[]{"Alert", "Search"}), new string[]{"Hidden"}, new string[]{"Camoflage"},
+        new Trait("Hearing", 1.2f, new string[]{"Alert", "Search"}), new string[]{"Hidden"}, new string[]{"Quiet"},
+
+        new Trait("Stink", 1.5f, new string[]{}), new string[]{"Scent", "Smell"}, new string[]{},
+        new Trait("Camoflage", 1f, new string[]{"Hidden"}), new string[]{"Sight"}, new string[]{},
+        new Trait("Stealth", 1.5f, new string[]{"Quiet", "Hidden"}), new string[]{"Hearing"}, new string[]{"Alert"},
+        
+        //Fighting traits
+        new Trait("Claws", 1f, new string[]{"Cutting"}), new string[]{}, new string[]{"Armoured"},
+        new Trait("Fangs", 1f, new string[]{"Piercing"}), new string[]{}, new string[]{},
+        new Trait("Jaws", 1.5f, new string[]{"Crushing"}), new string[]{"Scales"}, new string[]{"Dense"},
+
+        new Trait("Scales", 1f, new string[]{"Armoured"}), new string[]{"Cutting", "Piercing"}, new string[]{},
+        new Trait("Thickness", 1f, new string[]{"Dense"}), new string[]{"Crushing"}, new string[]{},
+        new Trait("Spikes", 1.5f, new string[]{"Piercing"}), new string[]{}, new string[]{},
+    };
+
+    public object[] generalDomains = new object[]{("Underground", 2f),("Ground", 1f), ("Canopy", 1.5f), ("Sky", 2.5f)};
+    //What advantages does the creature have to escape from predators or catch prey?
+    public object[] movement  = new object[]{("None", 0f), ("Standard", 1f), ("Speed", 2f), ("Endurance", 1.5f)};
+    //What advantages does the creature have to avoid getting caught...
+    public object[] defenses = new object[]{("Alert", 2f), ("Hidden", 1f), ("None", 0f)};
+    //the senses that need to be hidden from or alerted too
+    public object[] senses = new object[]{("Smell", 1.1f), ("Sound", 0.8f), ("Sight", 1.8f), ("None", 0f)};
+    //The physical traits the creature has to attack or defend from predators and prey
+    public object[] physicalTraits = new object[]{("Claws", 1f), ("Poison", 1.2f), ("Spikes", 1f), ("Armour", 1.2f), ("Acid", 1f)};
+   
+    public static float BUDGET = 1.5f;
+
+    public object[] CrossDomains(object[] general, object[] specific){
+        object[] cross = new object[general.Length * specific.Length];
+        for(int i =0; i < general.Length; i++){
+            (string gs, float gf) = ((string, float))general[i];
+            for(int j=0; j< specific.Length; j++){
+                (string ss, float sf) = ((string, float))specific[j];
+                cross[i*specific.Length + j] = ((gs, ss), gf * sf);
+            }
+        }
+        return cross;
+    }
+    public void GenerateSpecies(){
+        
+        var senseDomain = CrossDomains(defenses, senses);
+        var movementDomain = CrossDomains(generalDomains, movement);
+        List<Variable> vars = new();
+        List<Constraint> cons = new();
+        foreach(EcoNode node in nodes){
+            /** for each node, generate some basic variables and constraints over those variables... **/
+            int trophicLevel = (int)node.trophicLevel.GetValue();
+            string job = (string)node.job.GetValue();
+            Variable moveVar = new Variable(node.name + " movement", movementDomain);
+            Variable senseVar = new Variable(node.name + " senses", senseDomain);
+            Variable physicalVar = new Variable(node.name + " physical traits", physicalTraits);
+            node.speciesAttributes = new Variable[]{moveVar, senseVar, physicalVar};
+            vars.AddRange(node.speciesAttributes);
+            //Ads a constraint that all the advantages cost less than the budget for the trophic level
+            cons.Add(new Constraint(node.speciesAttributes, (vals, sys) => {
+                float budget = BUDGET * (float)Math.Pow(2, trophicLevel);
+                foreach(object obj in vals){
+                    (object tags, float cost) = ((object, float))obj;
+                    budget -= cost;
+                }
+                return Math.Max(0, (int)Math.Round(budget));
+            }));
+        }
+        /**Adds constraints on each arc, can use the nodes relationships as parameters...**/
+        foreach(EcoNode node in nodes){
+            int trophicLevel = (int)node.trophicLevel.GetValue();
+            string job = (string)node.job.GetValue();
+            foreach((Variable relation, EcoNode tail) in node.GetArcs()){
+                string rel = (string)relation.GetValue();
+                string tailJob = (string)tail.job.GetValue();
+                int tailLevel = (int)tail.trophicLevel.GetValue();
+
+                var arcVars = new Variable[]{};
+                arcVars.AddRange(node.speciesAttributes);
+                arcVars.AddRange(tail.speciesAttributes);
+                cons.Add(new Constraint(arcVars, (vals, sys) => {
+                        return 0;
+                    }));
+            }
+        }
     }
     /**
         Iterate through all nodes, adding together their job, trophic level, and all their edge values
