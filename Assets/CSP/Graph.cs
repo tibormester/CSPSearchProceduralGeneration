@@ -33,7 +33,8 @@ public class Graph{
     **/
     public Dictionary<string, object> BacktrackingSolve(int errorThreshold = 1){
         Dictionary<Variable, int> assignments = new();
-        BacktrackingHelper(assignments, errorThreshold, 0);
+        int errors = BacktrackingHelper(assignments, errorThreshold, 0);
+        if(errors > 0)Debug.Log("Warning Errors: " + errors);
         return CastSolution();
     }
     private int BacktrackingHelper(Dictionary<Variable, int>assignments, int errorThreshold = 1, int errors = 0){
@@ -42,6 +43,7 @@ public class Graph{
         Variable variable = NextVariable(variables.Except(assignments.Keys), variableSelector);
         //Get the ordered list of values
         int[] values = variable.partialSolution.ToArray();
+        int maxError = errors;
         foreach(int value in values.OrderBy(variable.domainSelector)){
             int oldError = errors;
             variable.partialSolution = new(){value};//collapse the partial solution so that the constraint knows that it is assigned
@@ -64,17 +66,19 @@ public class Graph{
                 if(assignments.Keys.Count == variables.Length)return errors;
                 //Otherwise remove the assignment 
                 assignments.Remove(variable);
-                variable.partialSolution = null;
             }//reset the error before trying the next value
+            maxError = Math.Max(maxError, errors);
             errors = oldError;
         }
-        //If we get to hear then non of the values are valid so we backtrack
+        //Reset the partial solution to the original since we need to backtrack
+        variable.partialSolution = values.ToList();
+        //If we get to hear then none of the values are valid so we backtrack
         //If assignmnets.keys.count == 0 then we are at the base and it is overly constrained
         if(assignments.Keys.Count == 0){
             Debug.LogWarning("Backtracking was exhausted without a solution, problem is overly constrained");
-            return BacktrackingHelper(assignments, errorThreshold + 1, 0);
-        } 
-        return errorThreshold;
+            return BacktrackingHelper(assignments, errorThreshold * 2, 0);
+        }
+        return maxError;
     }
 
     /**

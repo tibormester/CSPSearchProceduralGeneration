@@ -1,8 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Unity.VisualScripting;
-using UnityEngine;
 /**
 Each variable is a property of an object and the generated value, there is also the domain of all values as well as partial solutions (list of indicies of objects in the domain)
 **/
@@ -10,11 +8,12 @@ public class Variable{
     public string name;
     public object[] domain;
     //uninitialized means copy the indicies of the domain on request, otherwise just lists the indicies referencing domain objects
+    protected List<int> PartialSolution;
     public List<int> partialSolution {
-        get {   if (partialSolution == null){
+        get {   if (PartialSolution == null){
                     partialSolution = Enumerable.Range(0, domain.Length).ToList();
-                }return partialSolution;}
-        set  {partialSolution = value;}}
+                }return PartialSolution;}
+        set  {PartialSolution = value;}}
 
     public int domainSize {get => partialSolution.Count;}
     public bool assigned {get => domainSize == 1 ? true : false;}
@@ -61,16 +60,16 @@ public class Variable{
 public class MultiVariable : Variable{
     public int minvalues = 1;
     public int maxvalues = 1;
-    private int[][] Domain {get => (Domain == null) ? GenerateDomain() : Domain; set=> Domain = value;} 
+    private int[][] DomainBacking;
+    private int[][] Domain {get  {if(DomainBacking == null)Domain = GenerateDomain(); return DomainBacking;} set=> DomainBacking = value;} 
     //uninitialized means copy the indicies of the domain on request, otherwise just lists the indicies referencing domain objects
-
     public new List<int> partialSolution {
         get  {
-            if(partialSolution == null){
+            if(PartialSolution == null){
                 partialSolution = Enumerable.Range(0, Domain.Length).ToList();
-            } return partialSolution;
+            } return PartialSolution;
         }
-        set => partialSolution = value; 
+        set => PartialSolution = value; 
         }
         
 
@@ -153,26 +152,3 @@ public class MultiVariable : Variable{
         }
 
 }
-/**
-get {   if (PartialSolution == null){
-                    PartialSolution = new List<int>[maxvalues];
-                    for(int i = 0; i < PartialSolution.Length; i++){
-                        PartialSolution[i] = Enumerable.Range(0, domain.Length).ToList();
-                    }
-                    return Enumerable.Range(0, domain.Length * PartialSolution.Length).ToList();
-                }
-                List<int> indicies = new List<int>();
-                for(int i = 0; i < PartialSolution.Length; i++){
-                    indicies.AddRange(PartialSolution[i].Select((x) => x + (i * domain.Length)));
-                }
-                return indicies;}
-        set  {
-                PartialSolution = new List<int>[maxvalues];
-                for(int i = 0; i < PartialSolution.Length; i++){
-                    PartialSolution[i] = new();
-                }
-                foreach(int val in value){
-                    PartialSolution[val / domain.Length].Add(val % domain.Length);
-                }
-        }}
-**/

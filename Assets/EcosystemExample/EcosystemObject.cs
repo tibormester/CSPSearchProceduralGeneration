@@ -9,8 +9,8 @@ using UnityEngine;
 
 public class EcosystemObject : ProceduralObject
 {
-    public static int MIN_SPECIES = 5;
-    public static int MAX_SPECIES = 10;
+    public static int MIN_SPECIES = 3;
+    public static int MAX_SPECIES = 5;
     public static int MIN_TROPHIC_LEVELS = 2;
     public static int MAX_TROPHIC_LEVELS = 5;
 

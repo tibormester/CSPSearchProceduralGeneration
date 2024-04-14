@@ -24,7 +24,7 @@ public class Constraint{
     }
     
     public int Evaluate(object[] vals){
-        return relation(vals, obj);
+        return relation.Invoke(vals, obj);
     }
     /**
         Checks each value in the partial domain of head against all combinations of values in the partial domains of the other variables against the constraint
