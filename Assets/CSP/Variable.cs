@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.VisualScripting;
+using UnityEngine;
 /**
 Each variable is a property of an object and the generated value, there is also the domain of all values as well as partial solutions (list of indicies of objects in the domain)
 **/
@@ -9,13 +10,11 @@ public class Variable{
     public string name;
     public object[] domain;
     //uninitialized means copy the indicies of the domain on request, otherwise just lists the indicies referencing domain objects
-    private List<int> PartialSolution;
     public List<int> partialSolution {
-        get {   if (PartialSolution == null){
-                    PartialSolution = Enumerable.Range(0, domain.Length).ToList();
-                    return PartialSolution;
-                }else {return PartialSolution;}}
-        set  {PartialSolution = value;}}
+        get {   if (partialSolution == null){
+                    partialSolution = Enumerable.Range(0, domain.Length).ToList();
+                }return partialSolution;}
+        set  {partialSolution = value;}}
 
     public int domainSize {get => partialSolution.Count;}
     public bool assigned {get => domainSize == 1 ? true : false;}
@@ -34,18 +33,18 @@ public class Variable{
     public Variable(){constraints = new Constraint[0];}
 
     //Returns the list of values from the partial solution, from the val index
-    public  object[] GetValues(){
+    public virtual object[] GetValues(){
             object[] vals = new object[partialSolution.Count];
             for(int i = 0; i < partialSolution.Count; i++){vals[i] = domain[partialSolution[i]];}
             return vals;   
     }
-    public  object[] GetValues(int[] indicies){
+    public virtual object[] GetValues(int[] indicies){
             object[] vals = new object[indicies.Length];
             for(int i = 0; i < indicies.Length; i++){vals[i] = domain[indicies[i]];}
             return vals;  
     }
-    public  object GetValue(int index){return domain[index];}
-    public  object GetValue(){return domain[partialSolution[0]];}
+    public virtual object GetValue(int index){return domain[index];}
+    public virtual object GetValue(){return domain[partialSolution[0]];}
     /**
     returns the partialsolution in the desired ordering
     A method for getting the next value using either a heursitic, randomness, or least constraining values
@@ -59,43 +58,21 @@ public class Variable{
 
 }
 
-
-
 public class MultiVariable : Variable{
-
-    //Maybe define this as its own csp?? where we take any constraints that are only on this variable.... 
-    //define variable primes that include the domain and zero, 
-    //then get the set of all possible solutions and use that as the resulting domain and partial solution...
     public int minvalues = 1;
     public int maxvalues = 1;
-    public int count = 0;
-    public bool ordered = false;
+    private int[][] Domain {get => (Domain == null) ? GenerateDomain() : Domain; set=> Domain = value;} 
     //uninitialized means copy the indicies of the domain on request, otherwise just lists the indicies referencing domain objects
-    private List<int>[] PartialSolution;
-    public List<int> partialSolution {
-        //NEEDS to return the list of indicies that indicate all possible values to try...
-        //The partial solutions are stored in a 2d array, this basically just flattens it or unflattens it...
-        get {   if (PartialSolution == null){
-                    PartialSolution = new List<int>[maxvalues];
-                    for(int i = 0; i < PartialSolution.Length; i++){
-                        PartialSolution[i] = Enumerable.Range(0, domain.Length).ToList();
-                    }
-                    return Enumerable.Range(0, domain.Length * PartialSolution.Length).ToList();
-                }
-                List<int> indicies = new List<int>();
-                for(int i = 0; i < PartialSolution.Length; i++){
-                    indicies.AddRange(PartialSolution[i].Select((x) => x + (i * domain.Length)));
-                }
-                return indicies;}
-        set  {
-                PartialSolution = new List<int>[maxvalues];
-                for(int i = 0; i < PartialSolution.Length; i++){
-                    PartialSolution[i] = new();
-                }
-                foreach(int val in value){
-                    PartialSolution[val / domain.Length].Add(val % domain.Length);
-                }
-        }}
+
+    public new List<int> partialSolution {
+        get  {
+            if(partialSolution == null){
+                partialSolution = Enumerable.Range(0, Domain.Length).ToList();
+            } return partialSolution;
+        }
+        set => partialSolution = value; 
+        }
+        
 
     public MultiVariable(string n, object[] d){
         name = n;
@@ -103,7 +80,7 @@ public class MultiVariable : Variable{
         constraints = new Constraint[0];
     }
 
-    public void GenerateDomain(){
+    public int[][] GenerateDomain(){
         //Create the csp by appending null to the end of the domain
         object[] vals = domain.Append(null).ToArray();
         //Create the max number of variables
@@ -129,15 +106,73 @@ public class MultiVariable : Variable{
         }
         ProceduralObject multiVar = new ProceduralObject();
         Graph layer = new Graph(vars, cons, multiVar, true);
-        var sol = layer.BacktrackingSolve();
+        return layer.AllSolutions();
     }
     public MultiVariable(){constraints = new Constraint[0];}
 
-    public object GetValue(int valueIndex){
-        //return Array of values indexed by that value index...
-        //value index = domain.length * ith variable + domain index
-        //its going to be given the value index from 0 to maxvariables * domain length, checking each one...
-        return null;
+    public override object[] GetValues(){
+            object[] vals = new object[partialSolution.Count];
+            int[] indicies = new int[partialSolution.Count];
+            for(int i = 0; i < partialSolution.Count; i++){
+                indicies = Domain[partialSolution[i]];
+                object[] val = new object[indicies.Length];
+                for(int j = 0; j < indicies.Length; j++){
+                    val[j] = (indicies[j] < domain.Length - 1) ? domain[indicies[j]] : null;
+                }
+                vals[i] = val;
+            }
+            return vals;   
     }
+    public override object[] GetValues(int[] indicies){
+            object[] vals = new object[indicies.Length];
+            for(int i = 0; i < indicies.Length; i++){
+                var indexer = Domain[indicies[i]];
+                object[] val = new object[indexer.Length];
+                for(int j = 0; j < indexer.Length; j++){
+                    val[j] = (indexer[j] < domain.Length - 1) ? domain[indexer[j]] : null;
+                }
+                vals[i] = val;
+            }
+            return vals; 
+    }
+    public override object GetValue(int index){
+        int[] indicies = Domain[index];
+        object[] vals = new object[indicies.Length];
+        for(int i = 0; i < indicies.Length; i++){
+            vals[i] = (indicies[i] < domain.Length - 1) ? domain[indicies[i]] : null;
+        }
+        return vals;
+        }
+    public override object GetValue(){
+        int[] indicies = Domain[partialSolution[0]];
+        object[] vals = new object[indicies.Length];
+        for(int i = 0; i < indicies.Length; i++){
+            vals[i] = (indicies[i] < domain.Length - 1) ? domain[indicies[i]] : null;
+        }
+        return vals;
+        }
 
 }
+/**
+get {   if (PartialSolution == null){
+                    PartialSolution = new List<int>[maxvalues];
+                    for(int i = 0; i < PartialSolution.Length; i++){
+                        PartialSolution[i] = Enumerable.Range(0, domain.Length).ToList();
+                    }
+                    return Enumerable.Range(0, domain.Length * PartialSolution.Length).ToList();
+                }
+                List<int> indicies = new List<int>();
+                for(int i = 0; i < PartialSolution.Length; i++){
+                    indicies.AddRange(PartialSolution[i].Select((x) => x + (i * domain.Length)));
+                }
+                return indicies;}
+        set  {
+                PartialSolution = new List<int>[maxvalues];
+                for(int i = 0; i < PartialSolution.Length; i++){
+                    PartialSolution[i] = new();
+                }
+                foreach(int val in value){
+                    PartialSolution[val / domain.Length].Add(val % domain.Length);
+                }
+        }}
+**/

@@ -144,7 +144,7 @@ public class Graph{
         return solution;
     }
 
-    public object[] AllSolutions(int errorThreshold = 1){
+    public int[][] AllSolutions(int errorThreshold = 1){
         Dictionary<Variable, int> assignments = new();
         List<int[]> allSolutions = new List<int[]>();
 
