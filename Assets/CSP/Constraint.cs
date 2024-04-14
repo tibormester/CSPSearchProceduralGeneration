@@ -5,7 +5,6 @@ using Newtonsoft.Json;
 using UnityEngine;
 
 public class Constraint{
-    //public string[] variableNames;
     public Variable[] variables; 
     //Maybe make a way to sum together constraints if they act on the same set of variables???
     public Func<object[], ProceduralObject, int> relation;
@@ -21,16 +20,19 @@ public class Constraint{
         for(int i = 0; i < variables.Length; i++){
             Variable var = variables[i];
             if(!var.constraints.Contains(this)) var.constraints = var.constraints.Append(this).ToArray();
-            //variableNames[i] = var.name;
         }
     }
-
+    
+    public int Evaluate(object[] vals){
+        return relation(vals, obj);
+    }
     /**
         Checks each value in the partial domain of head against all combinations of values in the partial domains of the other variables against the constraint
         prunes values that are inconsistent and returns the number of values pruned
         returns -1 if the partial solution becomes empty (this should indicate backtracking is necessary)
     **/
     public int ArcConsistencyPruning(Variable head, int errorThreshold = 1){
+        if(head is MultiVariable) Debug.LogError("ArcConsistencyPruning isn't updated to accept Variables with Multiplicity...");
         //For each value in the partial solution of head, check if there is valid solutions, if not remove it from the partial solution
         if(!variables.Contains(head)) Debug.LogError("Head node: " + head.name + "isn't part of this constraint");
         int initialDomainSize = head.domainSize;

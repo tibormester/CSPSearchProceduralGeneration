@@ -54,6 +54,8 @@ public class TestCSP : MonoBehaviour{
             }
         }
         Debug.Log(JsonConvert.SerializeObject(sol, Formatting.Indented));
+
+        var tree = new TreeObject();
     }
     
     public Func<object[], ProceduralObject, int> Disjoint = (values,  obj) =>

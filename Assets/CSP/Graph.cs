@@ -10,10 +10,16 @@ public class Graph{
     public Func<Variable, int> variableSelector = leastConstrained;
     public static int trivial(int x){return x;}
     public static int leastConstrained(Variable var){return -1 * var.constraints.Length;}
+    public System.Random rand = new System.Random();
 
-    public Graph(Variable[] vars, Constraint[] cons){
+    public Graph(Variable[] vars, Constraint[] cons, ProceduralObject sys, bool randomDomainVals = true){
         variables = vars;
         constraints = cons;
+        foreach(var c in constraints){c.obj = sys;}
+        if(randomDomainVals){
+            Func<int,int> randValue = (x) => rand.Next();
+            foreach(Variable var in vars){var.domainSelector = randValue;}
+        }
         Debug.Log("Created layer:\n" + JsonConvert.SerializeObject(CastSolution(true)));
     }
 
@@ -38,13 +44,21 @@ public class Graph{
         int[] values = variable.partialSolution.ToArray();
         foreach(int value in values.OrderBy(variable.domainSelector)){
             int oldError = errors;
+            variable.partialSolution = new(){value};//collapse the partial solution so that the constraint knows that it is assigned
             foreach(Constraint constraint in variable.constraints){
-                if(constraint.VariablesAssigned())
-                    errors += constraint.ArcConsistency(variable, value, errorThreshold);
+                if(constraint.VariablesAssigned()){
+                    object[] vals = new object[constraint.variables.Length];
+                    //Foreach variable in the constraint, get its value
+                    for (int i = 0; i < constraint.variables.Length; i++) {
+                        vals[i] = constraint.variables[i].GetValue();
+                    }   
+                    errors += constraint.Evaluate(vals);
+                    //Since we check that all variables are assigned we dont need to check consistency, we can just evaluate the constraint
+                    //errors += constraint.ArcConsistency(variable, value, errorThreshold);
+                }
             }
             if (errors < errorThreshold){
                 assignments.Add(variable, value);
-                variable.partialSolution = new(){value};//collapse the partial solution so our arc consistency checking incorporates this value
                 errors = BacktrackingHelper(assignments, errorThreshold, errors);
                 //If the backtracking was a success then itll return the error < threshold so... check that all assignments are presenet and propogate error back up
                 if(assignments.Keys.Count == variables.Length)return errors;
@@ -130,4 +144,41 @@ public class Graph{
         return solution;
     }
 
+    public object[] AllSolutions(int errorThreshold = 1){
+        Dictionary<Variable, int> assignments = new();
+        List<int[]> allSolutions = new List<int[]>();
+
+        int[] indicies = Enumerable.Repeat(0, variables.Length).ToArray();
+        //indicies[i] represents the index of the partial solution array of index i that the value is in
+        object[] values = new object[variables.Length];
+        //Gets the value from the variables partial domain
+        bool done = false;
+        //While we havent checked every combination of indicies
+        while (!done){
+            //Assign the values object with the proper objects
+            for (int i = 0; i < indicies.Length; i++) {
+                values[i] = variables[i].GetValue(variables[i].partialSolution[indicies[i]]);
+            }
+            //Check if these values work
+            int error = 0;
+            foreach(Constraint con in constraints){error += con.Evaluate(values);}
+            if (error < errorThreshold){
+                //if they do add the indicies to the sollutions
+                allSolutions.Add(indicies.ToArray());
+            }
+            //increments indicies[j] value by 1 and handles carrying over and skipping the headIndex
+            int j = indicies.Length - 1;
+            while (!done) {  //iterate until breaking by j<0 or index[j]++;
+                if (j < 0) { done = true; break; }
+                if (indicies[j] + 1 >= variables[j].domainSize){
+                    indicies[j] = 0;
+                    j -= 1;
+                }else{
+                    indicies[j] += 1;
+                    break;
+                }
+            }
+        }
+        return allSolutions.ToArray();
+    }
 }

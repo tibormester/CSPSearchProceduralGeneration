@@ -9,9 +9,9 @@ using UnityEngine;
 
 public class EcosystemObject : ProceduralObject
 {
-    public static int MIN_SPECIES = 15;
-    public static int MAX_SPECIES = 25;
-    public static int MIN_TROPHIC_LEVELS = 3;
+    public static int MIN_SPECIES = 5;
+    public static int MAX_SPECIES = 10;
+    public static int MIN_TROPHIC_LEVELS = 2;
     public static int MAX_TROPHIC_LEVELS = 5;
 
     public int speciesCount;
@@ -20,7 +20,7 @@ public class EcosystemObject : ProceduralObject
     public Dictionary<string, object> valueLookup; //keys will be from jobs or relationships array and values will be idk...
     
     //Our domains for each node and edge
-    public object[] jobs = new string[3]{
+    public object[] jobs = new string[]{
         "Photosynthesizer",
         "Herbivore",
         "Carnivore",
@@ -31,10 +31,11 @@ public class EcosystemObject : ProceduralObject
         int variability = 8; //how many values should a given value overlap with, anything beyond variablity distance in the domain will be checked afterwards
         return rand.Next( x - (variability / 2), x + (variability / 2));
     };
-    public object[] relationships = new string[3]{
+    public object[] relationships = new string[]{
         "Neutralism",
         "Competition",
         "Predation",
+        "Mutualism",
     };
     public object[] trophicLevels;
     
@@ -145,9 +146,8 @@ public class EcosystemObject : ProceduralObject
         //Flatten the nodes into a list of variables and construct the set of constraints
         ecoVariables = GetVariables();
         ecoConstraints = GetConstraints();
-        foreach(Constraint cons in ecoConstraints){cons.obj = this;};
 
-        layers = new Graph[]{new Graph(ecoVariables, ecoConstraints)};
+        layers = new Graph[]{new Graph(ecoVariables, ecoConstraints, this)};
         
         /**
         Func<int,int> randValue = (x) => rand.Next();
@@ -157,7 +157,95 @@ public class EcosystemObject : ProceduralObject
         //Later can implement probability distributions on the random value to influence the solution
         foreach(Variable var in ecoVariables){var.domainSelector = WEIGHTED_RANDOM;}
     }
+    /**
+        Iterate through all nodes, adding together their job, trophic level, and all their edge values
+    **/
+    public Variable[] GetVariables(){
+        List<Variable> vars = new();
+        for (int i = 0; i < nodes.Length; i++){
+            EcoNode node = nodes[i];
+            vars.Add(node.job);
+            vars.Add(node.trophicLevel);
+            vars.AddRange(node.edges);
+        }
+        return vars.ToArray();
+    }
+    public EcoNode GetEcoNode(int variableIndex){
+        // the node is the index divided by (edges = # species - 1) + (2 = job + trophic level)
+        return nodes[variableIndex / (speciesCount + 1)];
+    }
+    public List<Constraint> EachNode(Func<object[], EcoNode, EcosystemObject, int> f){
+        List<Constraint> cons = new();
+        foreach(EcoNode node in nodes){
+            Variable[] vars = new Variable[] {node.job, node.trophicLevel }.Concat(node.edges).ToArray();
+            Func<object[], ProceduralObject, int> func = (vals, obj) => f.Invoke(vals, node, (EcosystemObject)obj);
+            Constraint c = new Constraint(vars, func);
+            cons.Add(c);
+        }
+        return cons;
+    }
+    public List<Constraint> EachEdge(Func<object, object, object, object, object, object, EcosystemObject, int> f){
+        List<Constraint> cons = new();
+        foreach(EcoNode node in nodes){
+            foreach(int edgeIndex in node.EdgeIndicies()){
+                var tail = node.Tail(edgeIndex);
+                Variable[] vars = new Variable[] {node.job, node.trophicLevel, node.Edge(tail), tail.Edge(node), tail.job, tail.trophicLevel };
+                Func<object[], ProceduralObject, int> func = (vals, obj) => f.Invoke(vals[0], vals[1], vals[2], vals[3], vals[4], vals[5],(EcosystemObject)obj);
+                Constraint c = new Constraint(vars, func);
+                cons.Add(c);
+            }
+        }
+        return cons;
+    }
 
+    public Constraint[] GetConstraints(){
+        List<Constraint> cons = new();
+        //Each constraint checks for complete arc consistency of the set of variables, so we want to minimize the number of variables included and the number of constraints
+        //A good way to do this is to have a single constraint that sums the results of all the relations
+
+        //After changes to the algorithm, its no longer necessary to combine all the constraints or to minimize the variables included
+        cons.AddRange(EachEdge((hj, hl, hr, tr, tj, tl, system) => {
+                //Carnivores cant eat plants
+                int errors = ((string)hj == "Carnivore") ? ((string)hr == "Predation" && ((string)tj == "Photosynthesizer")) ? 1 : 0 : 0;;
+                //Herbivores cant eat anything but plants
+                errors += ((string)hj == "Herbivore") ? ((string)hr == "Predation" && ((string)tj != "Photosynthesizer")) ? 1 : 0 : 0;;
+                //plants cant eat anything
+                errors += ((string)hj == "Photosynthesizer") ? ((string)hr == "Predation") ? 1 : 0 : 0;
+                //Something eating something else must be at a higher trophic level
+                errors += ((string)hr == "Predation") ? ((int)hl >= (int)tl) ? 0 : 1 : 0;
+                //Things with the same job at the same trophic level must compete
+                errors += (hj == tj && hl == tl &&(string)hr != "Competition") ? 1 : 0;
+                errors += ((string)hr == "Competition" && hj != tj) ? 1 : 0;
+                //Competition should be mutual
+                errors += ((string)hr == "Competition" && (string)tr != "Competition") ? 1 : 0;
+                return errors;}));
+        cons.AddRange(EachNode((vals, node, system) => {
+                int errors = 0;
+                int MAX_REWARD = 0;
+                //Carnivores and herbivores must eat at least 1 thing
+                if ((string)vals[0] == "Carnivore" || (string)vals[0] == "Herbivore"){
+                    int minimum_predation = 1;
+                    foreach(int edge in node.EdgeIndicies()){
+                        int e = edge - node.JobIndex();
+                        minimum_predation -= ((string)vals[e] == "Predation" ) ? 1 : 0;
+                    }
+                    errors += Math.Max(minimum_predation, MAX_REWARD);
+                }
+                return errors;
+            }));
+        //Adds a constraint on the whole graph
+        cons.Add(new Constraint(ecoVariables, (vals, obj) => {
+            int errors = 0;
+            //Checks that there is at least 1 carnivore
+            int minimum_carnivores = 1;
+            foreach(EcoNode node in nodes){if ((string)vals[node.JobIndex()] == "Carnivore"){ minimum_carnivores--;}}
+            errors += Math.Max(minimum_carnivores, 0);
+
+            return errors;
+            }));
+        return cons.ToArray();
+    }
+    
     /**
         Once the graph variables have their values set, generate variables for traits and create creatures off of that...
     **/
@@ -313,91 +401,4 @@ public class EcosystemObject : ProceduralObject
             }
         }
     }
-    /**
-        Iterate through all nodes, adding together their job, trophic level, and all their edge values
-    **/
-    public Variable[] GetVariables(){
-        List<Variable> vars = new();
-        for (int i = 0; i < nodes.Length; i++){
-            EcoNode node = nodes[i];
-            vars.Add(node.job);
-            vars.Add(node.trophicLevel);
-            vars.AddRange(node.edges);
-        }
-        return vars.ToArray();
-    }
-    public EcoNode GetEcoNode(int variableIndex){
-        // the node is the index divided by (edges = # species - 1) + (2 = job + trophic level)
-        return nodes[variableIndex / (speciesCount + 1)];
-    }
-    public List<Constraint> EachNode(Func<object[], EcoNode, EcosystemObject, int> f){
-        List<Constraint> cons = new();
-        foreach(EcoNode node in nodes){
-            Variable[] vars = new Variable[] {node.job, node.trophicLevel }.Concat(node.edges).ToArray();
-            Func<object[], ProceduralObject, int> func = (vals, obj) => f.Invoke(vals, node, (EcosystemObject)obj);
-            Constraint c = new Constraint(vars, func);
-            cons.Add(c);
-        }
-        return cons;
-    }
-    public List<Constraint> EachEdge(Func<object, object, object, object, object, object, EcosystemObject, int> f){
-        List<Constraint> cons = new();
-        foreach(EcoNode node in nodes){
-            foreach(int edgeIndex in node.EdgeIndicies()){
-                var tail = node.Tail(edgeIndex);
-                Variable[] vars = new Variable[] {node.job, node.trophicLevel, node.Edge(tail), tail.Edge(node), tail.job, tail.trophicLevel };
-                Func<object[], ProceduralObject, int> func = (vals, obj) => f.Invoke(vals[0], vals[1], vals[2], vals[3], vals[4], vals[5],(EcosystemObject)obj);
-                Constraint c = new Constraint(vars, func);
-                cons.Add(c);
-            }
-        }
-        return cons;
-    }
-
-    public Constraint[] GetConstraints(){
-        List<Constraint> cons = new();
-        //Each constraint checks for complete arc consistency of the set of variables, so we want to minimize the number of variables included and the number of constraints
-        //A good way to do this is to have a single constraint that sums the results of all the relations
-        cons.AddRange(EachEdge((hj, hl, hr, tr, tj, tl, system) => {
-                //Carnivores cant eat plants
-                int errors = ((string)hj == "Carnivore") ? ((string)hr == "Predation" && ((string)tj == "Photosynthesizer")) ? 1 : 0 : 0;;
-                //Herbivores cant eat anything but plants
-                errors += ((string)hj == "Herbivore") ? ((string)hr == "Predation" && ((string)tj != "Photosynthesizer")) ? 1 : 0 : 0;;
-                //plants cant eat anything
-                errors += ((string)hj == "Photosynthesizer") ? ((string)hr == "Predation") ? 1 : 0 : 0;
-                //Something eating something else must be at a higher trophic level
-                errors += ((string)hr == "Predation") ? ((int)hl >= (int)tl) ? 0 : 1 : 0;
-                //Things with the same job at the same trophic level must compete
-                errors += (hj == tj && hl == tl &&(string)hr != "Competition") ? 1 : 0;
-                errors += ((string)hr == "Competition" && hj != tj) ? 1 : 0;
-                //Competition should be mutual
-                errors += ((string)hr == "Competition" && (string)tr != "Competition") ? 1 : 0;
-                return errors;}));
-        cons.AddRange(EachNode((vals, node, system) => {
-                int errors = 0;
-                int MAX_REWARD = 0;
-                //Carnivores and herbivores must eat at least 1 thing
-                if ((string)vals[0] == "Carnivore" || (string)vals[0] == "Herbivore"){
-                    int minimum_predation = 1;
-                    foreach(int edge in node.EdgeIndicies()){
-                        int e = edge - node.JobIndex();
-                        minimum_predation -= ((string)vals[e] == "Predation" ) ? 1 : 0;
-                    }
-                    errors += Math.Max(minimum_predation, MAX_REWARD);
-                }
-                return errors;
-            }));
-        //Adds a constraint on the whole graph
-        cons.Add(new Constraint(ecoVariables, (vals, obj) => {
-            int errors = 0;
-            //Checks that there is at least 1 carnivore
-            int minimum_carnivores = 1;
-            foreach(EcoNode node in nodes){if ((string)vals[node.JobIndex()] == "Carnivore"){ minimum_carnivores--;}}
-            errors += Math.Max(minimum_carnivores, 0);
-
-            return errors;
-            }));
-        return cons.ToArray();
-    }
-
 }
