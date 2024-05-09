@@ -31,17 +31,23 @@ public class BodyPart{
 }
 public class Joint{
     //Something to describe the joint, name + filters for tags, checks blacklist first and if a list is null the filter isnt applied
-    string name;
-    string[] whitelist;
-    string[] blacklist;
-    BodyPart body;
-    BodyPart limb;
+    public string name;
+    public string[] whitelist;
+    public string[] blacklist;
+    public BodyPart body;
+    public BodyPart limb;
     //Where on the parent object to act locally from
-    Vector3 root = Vector3.zero;
+    public Vector3 root = Vector3.zero;
     //Where on the child object to act on
-    Vector3 tail = Vector3.zero;
+    public Vector3 tail = Vector3.zero;
     //How should the tail be rotated relative to the root orienation
-    Quaternion orientation = Quaternion.identity;
+    public Quaternion orientation = Quaternion.identity;
+    public Joint(string n = "", BodyPart b = null, string[] white = null, string[] black = null){
+        name = n;
+        body = b;
+        whitelist = white;
+        blacklist = black;
+    }
     public bool valid(BodyPart part){
         if(part == null)return false;
         if (blacklist != null && blacklist.Length > 0) foreach(string tag in part.tags){

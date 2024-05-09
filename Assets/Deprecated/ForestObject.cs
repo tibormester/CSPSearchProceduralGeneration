@@ -121,17 +121,3 @@ public class ProceduralForest : ProceduralObject
     }
 }
 
-public class Forest {
-    
-}
-
-
-public class Creature : Entity{
-    
-}
-public class Entity{
-    Vector3 location;
-    Quaternion orientation;
-    bool drawn;
-    bool simulated; 
-}

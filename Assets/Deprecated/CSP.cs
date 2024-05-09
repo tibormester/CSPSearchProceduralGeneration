@@ -125,7 +125,7 @@ public class CSP<TVariable, TDomain>
         foreach(TVariable tail in variables){
             if(tail.Equals(head)) continue; //Want to check all global constraints against eachother
             foreach(Constraint<TVariable, TDomain> constraint in universalConstraints){
-                if(true);//IsConsistent())
+                //if(true);//IsConsistent())
             }
         }
         foreach(Constraint<TVariable,TDomain> constraint in constraints[headIndex]){

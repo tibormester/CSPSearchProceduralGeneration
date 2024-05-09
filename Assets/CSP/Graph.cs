@@ -8,6 +8,17 @@ public class Graph{
     public Variable[] variables;
     public Constraint[] constraints;
     public Func<Variable, int> variableSelector = leastConstrained;
+    public static Func<Variable, int> MostConstrained(Variable[] assigned){
+        return (Variable var) => {
+            int occurences = 0;
+            for(int i = 0; i < assigned.Length; i++){
+                foreach(Constraint con in assigned[i].constraints){
+                    if(con.variables.Contains(var)) occurences--;
+                }
+            }
+            return occurences;
+        };
+    }
     public static int trivial(int x){return x;}
     public static int leastConstrained(Variable var){return -1 * var.constraints.Length;}
     public System.Random rand = new System.Random();
@@ -20,7 +31,7 @@ public class Graph{
             Func<int,int> randValue = (x) => rand.Next();
             foreach(Variable var in vars){var.domainSelector = randValue;}
         }
-        Debug.Log("Created layer:\n" + JsonConvert.SerializeObject(CastSolution(true)));
+        //Debug.Log("Created layer:\n" + JsonConvert.SerializeObject(CastSolution(true)));
     }
 
     public void ResetPartialSolutions(){foreach(Variable variable in variables)variable.partialSolution = null;}
@@ -40,7 +51,12 @@ public class Graph{
     private int BacktrackingHelper(Dictionary<Variable, int>assignments, int errorThreshold = 1, int errors = 0){
         if(assignments.Keys.Count == variables.Length)return errors;
         //sort variables by number of constriants and start with most to least
-        Variable variable = NextVariable(variables.Except(assignments.Keys), variableSelector);
+        
+        //Avg time for 6x6 sudoko is 1:10.8
+        Variable variable = NextVariable(variables.Except(assignments.Keys), MostConstrained(assignments.Keys.ToArray()));
+        //Avg time for 6x6x took longer than 10mins
+        //Variable variable = NextVariable(variables.Except(assignments.Keys), variableSelector);
+        
         //Get the ordered list of values
         int[] values = variable.partialSolution.ToArray();
         int maxError = errors;
@@ -103,7 +119,7 @@ public class Graph{
         **/
     public Dictionary<string, object> ArcConsistencySolve(int errorThreshold = 1, bool acceptErrors = true){
         //Enqueue all arcs initially
-        Queue<(Variable,Constraint)> queue = new();
+        Queue<(Variable, Constraint)> queue = new();
         foreach(Constraint con in constraints){
             foreach(Variable var in con.variables){
                 queue.Enqueue((var, con));
@@ -185,4 +201,11 @@ public class Graph{
         }
         return allSolutions.ToArray();
     }
+
+    public void RandomWalkSolution(){
+        /**
+            Start with a random solution then try changing assignments until the number of errors goes down
+        **/
+    }
+
 }
